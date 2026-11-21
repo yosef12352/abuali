@@ -1,0 +1,20 @@
+{
+  "name": "أبو علي شات — تجريبي",
+  "short_name": "أبو علي شات",
+  "description": "واجهة رسائل محلية تجريبية بدون إرسال عبر الإنترنت",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#edf2ef",
+  "theme_color": "#116b5a",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
