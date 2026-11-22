@@ -56,6 +56,35 @@ a{color:#e9c66b!important}#status{background:#140d1c!important;border-color:#d4a
 @media(prefers-reduced-motion:reduce){
  #bearStage *,#bearStage *::before,#bearStage *::after{animation:none!important;transition:none!important}
 }
+</style><style id="auth-spacing-v2">
+/* One consistent vertical rhythm for login, signup and profile. */
+body:has(#authForm){padding:clamp(8px,2.5vw,18px);min-height:100dvh}
+body:has(#authForm) main{width:min(100%,460px);margin:clamp(0px,1.5vh,14px) auto;padding:clamp(16px,4vw,24px);display:flex;flex-direction:column;gap:0}
+body:has(#authForm) main>a:first-child{display:inline-flex;align-self:flex-start;align-items:center;min-height:36px;margin-bottom:4px;font-size:13px}
+body:has(#authForm) .royal-login-brand{margin:0 auto 2px!important;line-height:1.25}
+body:has(#authForm) .royal-login-brand .crown{margin:0!important;font-size:22px}
+body:has(#authForm) #bearStage{height:clamp(118px,21dvh,190px)!important;min-height:0!important;margin:0 auto!important}
+body:has(#authForm) #bearStage .bear-figure{height:100%!important;max-height:100%!important;width:auto!important;max-width:100%!important}
+body:has(#authForm) .mascot-caption,body:has(#authForm) .bear-caption{margin:0 auto 6px!important;min-height:18px!important;line-height:1.35}
+body:has(#authForm) h1{margin:5px 0 3px!important;font-size:clamp(21px,5vw,27px);line-height:1.3}
+body:has(#authForm) p{margin:5px 0 9px;line-height:1.55}
+body:has(#authForm) #auth .tabs{margin:10px 0 12px!important;gap:8px}
+body:has(#authForm) #auth .tabs button{min-height:43px;padding:9px 7px!important}
+body:has(#authForm) #authForm{display:flex;flex-direction:column;gap:0}
+body:has(#authForm) #authForm label{margin:9px 0 5px!important;font-size:13px;line-height:1.4}
+body:has(#authForm) #authForm input{min-height:46px;padding:11px 13px!important}
+body:has(#authForm) #authForm .password-row{gap:8px}
+body:has(#authForm) #authForm .password-row button{min-height:44px;min-width:62px;padding:8px!important}
+body:has(#authForm) #authForm>button[type=submit]{margin:15px 0 0!important;min-height:48px}
+body:has(#authForm) #auth .hint{font-size:12px;line-height:1.55;margin:8px 0!important}
+body:has(#authForm) #status{margin-top:10px;line-height:1.55}
+@media(max-width:390px),(max-height:700px){
+ body:has(#authForm) main{padding:12px!important;margin:0 auto!important}
+ body:has(#authForm) #bearStage{height:clamp(96px,16dvh,136px)!important}
+ body:has(#authForm) #auth .tabs{margin:7px 0 8px!important}
+ body:has(#authForm) #authForm label{margin:7px 0 4px!important}
+ body:has(#authForm) #authForm>button[type=submit]{margin-top:10px!important}
+}
 </style></head>
 <body><main><a href="./index.html">العودة إلى الدردشات</a><div class="royal-login-brand"><img src="./brand-logo.svg" alt="شعار أبو علي شات" class="auth-brand-logo" width="74" height="74"><span class="crown" aria-hidden="true">♛</span>أبو علي شات</div><div class="mascot-stage" id="bearStage" role="button" tabindex="0" aria-label="تفاعل مع الدب"><svg id="bear" class="bear-figure" role="img" aria-label="دب تفاعلي" data-mood="idle" viewBox="0 0 260 340" xmlns="http://www.w3.org/2000/svg">
 <defs><linearGradient id="bodyFur" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#b8fff1"/><stop offset=".55" stop-color="#4bc6b5"/><stop offset="1" stop-color="#1e8b92"/></linearGradient><radialGradient id="faceFur"><stop stop-color="#a4f3de"/><stop offset="1" stop-color="#38a9a5"/></radialGradient></defs>
