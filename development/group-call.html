@@ -11,7 +11,7 @@
 /* Keep the media element alive for audio-only calls; hiding it via [hidden] can pause playback. */
 .tile video.audio-only{opacity:0;pointer-events:none}
 @media(max-width:600px){.stage{padding:6px;gap:8px}.tiles:has(>.tile.remote):has(>.tile.local)>.tile.remote{border-radius:16px}.tiles:has(>.tile.remote):has(>.tile.local)>.tile.local{bottom:10px;left:10px;border-radius:14px}.controls{gap:6px;padding:12px 6px calc(10px + env(safe-area-inset-bottom))}.controls button{min-height:45px;padding:8px 10px;font-size:12px}}
-</style><link rel="icon" type="image/svg+xml" href="./icon.svg"><link rel="stylesheet" href="./premium-ui.css"></head><body>
+</style><link rel="icon" type="image/svg+xml" href="./brand-logo.svg"><link rel="stylesheet" href="./premium-ui.css"></head><body>
 <header><a href="./friends.html">‹ الأصدقاء</a><strong id="title">مكالمة جماعية</strong><button id="inviteOpen" type="button">＋ إضافة صديق</button></header>
 <main><section class="stage"><div id="status" class="status" role="status" aria-live="polite">جارٍ تجهيز المكالمة...</div><div id="tiles" class="tiles"></div></section><section class="dialog" id="inviteDialog" hidden><h3>دعوة أصدقاء جدد</h3><div id="friendList"></div><button id="inviteSend">إرسال الدعوات</button><button id="inviteClose">إغلاق</button></section><div class="small">المكالمات الجماعية تتطلب السماح للكاميرا والميكروفون. جودة الاتصال تعتمد على شبكة كل مشارك، وقد يلزم TURN لبعض الشبكات.</div></main>
 <footer class="controls"><button id="mute" aria-pressed="false">🎙 كتم</button><button id="camera" aria-pressed="false">📷 كاميرا</button><button id="speaker">🔊 الصوت</button><button id="share">🖥 مشاركة الشاشة</button><button id="end" class="end">☎ إنهاء / مغادرة</button></footer>
