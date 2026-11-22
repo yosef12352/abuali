@@ -5,13 +5,13 @@
 
 /* Mobile polish: 8px rhythm and accessible touch targets */
 body{font-size:16px}main{padding:16px 16px 88px}.card{gap:16px;padding:16px;margin:16px 0}.tabs button,.actions button,#refreshFriends{min-height:44px}.search input{font-size:16px;min-height:48px}.avatar{flex-basis:56px;width:56px;height:56px}.person small{font-size:14px;line-height:1.5}.card,.avatar,button{transition:transform .18s ease,background-color .18s ease}button:active{transform:scale(.97)}button:focus-visible,a:focus-visible{outline:3px solid #f2d49b;outline-offset:3px}@media(prefers-reduced-motion:reduce){.card,.avatar,button{transition:none!important}}@media(max-width:500px){.card{gap:12px}.actions{gap:8px}}
-</style></head><body><main>
+.group-setup{margin:16px 0;padding:18px;border:1px solid #d3b97b66;border-radius:20px;background:linear-gradient(145deg,#30233b,#18252e);color:#f9e4bd}.group-setup h2{font-size:19px;margin:0 0 10px}.group-setup button{min-height:44px}.group-setup .hint{line-height:1.7}.group-choice{display:flex;align-items:center;gap:12px;padding:11px;border-bottom:1px solid #ffffff22}.group-choice input{width:21px;height:21px;accent-color:#e4bd79}.group-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}#groupPicker[hidden]{display:none!important}</style></head><body><main>
 <header><div><h1>الأصدقاء <span aria-hidden="true">✦</span></h1><div class="hint">تواصل بأمان مع الأشخاص اللي بتعرفهم</div></div><a href="./index.html">العودة للدردشات</a></header>
-<div class="cover" aria-hidden="true"></div>
+<div class="cover" aria-hidden="true"></div><section id="groupCallSetup" class="group-setup" aria-labelledby="groupCallTitle"><h2 id="groupCallTitle">👥 مكالمة جماعية</h2><p class="hint">اختار من أصدقائك لغاية 7 أشخاص. تجهيز الدعوات متاح حالياً؛ ربط الصوت والفيديو الجماعي قيد التطوير.</p><button type="button" id="groupSelectFriends">اختيار المشاركين</button><div id="groupPicker" hidden><div id="groupFriendChoices"></div><div class="group-actions"><button type="button" id="groupInviteAudio">تحضير دعوة صوتية</button><button type="button" id="groupInviteVideo">تحضير دعوة فيديو</button></div><p id="groupFeedback" role="status" aria-live="polite"></p></div></section>
 <div class="tabs" role="tablist" aria-label="قوائم الأصدقاء"><button type="button" data-tab="discover" aria-selected="true">اكتشف</button><button type="button" data-tab="incoming" aria-selected="false">الواردة</button><button type="button" data-tab="outgoing" aria-selected="false">المرسلة</button><button type="button" data-tab="friends" aria-selected="false">أصدقائي</button></div>
 <form id="searchForm" class="search"><input id="search" maxlength="60" placeholder="ابحث باسم المستخدم" aria-label="بحث عن مستخدم"><button type="submit">بحث</button></form>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><p id="feedback" role="status" aria-live="polite"></p><button id="refreshFriends" class="secondary" type="button" aria-label="تحديث الأصدقاء">↻ تحديث</button></div><div id="list"></div>
-<p class="hint">المراسلة مع الأصدقاء فقط رح تُفعّل بعد ربط صلاحيات المحادثات بالخادم. هذه الصفحة مخصّصة لإدارة طلبات الصداقة.</p>
+<p class="hint">للمراسلة الفردية افتح ملف الصديق واضغط «رسالة».</p>
 </main>
 <script type="module">
 import {createClient} from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
@@ -85,8 +85,16 @@ function render(){
   b.textContent=count?base+' ('+count+')':base;
  });
  const selected=profiles.filter(p=>{const r=relationFor(p.id);if(tab==='incoming')return r?.status==='pending'&&r.addressee_id===me;if(tab==='outgoing')return r?.status==='pending'&&r.requester_id===me;if(tab==='friends')return r?.status==='accepted';return !r||r.status==='rejected'});
- selected.forEach(p=>list.append(card(p,relationFor(p.id))));
+ selected.forEach(p=>list.append(card(p,relationFor(p.id))));if(!groupPicker.hidden)renderGroupChoices();
 }
+
+const groupPicker=document.getElementById('groupPicker'),groupChoices=document.getElementById('groupFriendChoices');
+document.getElementById('groupSelectFriends').addEventListener('click',()=>{groupPicker.hidden=!groupPicker.hidden;renderGroupChoices()});
+function renderGroupChoices(){const chosen=new Set([...groupChoices.querySelectorAll('input:checked')].map(x=>x.value));groupChoices.replaceChildren();const friends=profiles.filter(p=>relationFor(p.id)?.status==='accepted');if(!friends.length){groupChoices.append(el('p','hint','ما عندك أصدقاء مقبولين بعد'));return}for(const p of friends){const label=el('label','group-choice'),checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.value=p.id;checkbox.checked=chosen.has(p.id);checkbox.addEventListener('change',()=>{const count=groupChoices.querySelectorAll('input:checked').length;if(count>7){checkbox.checked=false;document.getElementById('groupFeedback').textContent='الحد الأقصى 7 أصدقاء'}});label.append(checkbox,el('span','',p.display_name||'مستخدم'));groupChoices.append(label)}}
+async function prepareGroupInvitation(type){const ids=[...groupChoices.querySelectorAll('input:checked')].map(x=>x.value),status=document.getElementById('groupFeedback');if(!ids.length){status.textContent='اختار صديق واحد على الأقل';return}const buttons=[document.getElementById('groupInviteAudio'),document.getElementById('groupInviteVideo')];buttons.forEach(b=>b.disabled=true);status.textContent='جارٍ تجهيز الدعوات...';try{const{data,error}=await db.rpc('chat_create_group_call',{p_type:type,p_invitees:ids});if(error)throw error;status.textContent='تم إنشاء دعوات المجموعة ('+ids.length+' مشاركين). الاتصال الصوتي والفيديو الجماعي غير مفعّل بعد؛ ما رح تبدأ مكالمة قبل إكمال الربط.';status.dataset.callId=data}catch(e){status.textContent='تعذّر تجهيز الدعوات: '+(e.message||'خطأ')}finally{buttons.forEach(b=>b.disabled=false)}}
+document.getElementById('groupInviteAudio').addEventListener('click',()=>prepareGroupInvitation('audio'));
+document.getElementById('groupInviteVideo').addEventListener('click',()=>prepareGroupInvitation('video'));
+
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;render()}));
 document.getElementById('searchForm').addEventListener('submit',e=>{e.preventDefault();refreshProfiles()});
 document.getElementById('refreshFriends').addEventListener('click',load);
