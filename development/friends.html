@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#150e20"><title>الأصدقاء — أبو علي شات</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at 15% 0%,#352047,transparent 55%),#100d17;color:#f7f0ff;font:15px system-ui,Tahoma,sans-serif}main{max-width:720px;margin:auto;padding:18px 14px 60px}header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0 22px}h1{font-size:25px;margin:0}a{color:#e7c884;text-decoration:none}button,input{font:inherit}button{border:1px solid #9c815c;background:linear-gradient(120deg,#d6b879,#ae8c51);color:#1d1420;border-radius:13px;padding:11px 14px;cursor:pointer;font-weight:700}button.secondary{background:#2a2135;color:#f4e5fa;border-color:#53405e}button:disabled{opacity:.45;cursor:not-allowed}.tabs{display:flex;gap:8px;overflow:auto;padding:5px 0 18px}.tabs button{white-space:nowrap;flex:1}.tabs button[aria-selected=false]{background:#251b30;color:#d3bfdc;border-color:#45324f}.search{display:flex;gap:9px;margin-bottom:18px}.search input{width:100%;min-width:0;background:#221b2d;border:1px solid #614e6d;border-radius:14px;padding:14px;color:white;outline:none}.card{display:flex;gap:13px;align-items:center;background:linear-gradient(145deg,#271e33,#1b1626);border:1px solid #56405d;border-radius:19px;padding:14px;margin:11px 0;box-shadow:0 12px 24px #0003}.avatar{flex:0 0 52px;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:#473456;color:#f6dca5;overflow:hidden;font-size:22px}.avatar img{width:100%;height:100%;object-fit:cover}.person{flex:1;min-width:0}.person strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.person small{color:#c2aecb}.actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}.actions button{font-size:12px;padding:9px}#feedback{min-height:28px;color:#e7cb93}#list:empty:after{content:'ما في نتائج حالياً';display:block;text-align:center;padding:40px;color:#bba7c6}.hint{color:#bda9c7;font-size:12px;line-height:1.8}.cover{height:95px;border-radius:15px;background:linear-gradient(110deg,#392449,#97754d,#261c36);margin:12px 0}@media(max-width:500px){.card{align-items:flex-start;flex-wrap:wrap}.actions{width:100%}.actions button{flex:1}}
+</style></head><body><main>
+<header><div><h1>الأصدقاء <span aria-hidden="true">✦</span></h1><div class="hint">تواصل بأمان مع الأشخاص اللي بتعرفهم</div></div><a href="./index.html">العودة للدردشات</a></header>
+<div class="cover" aria-hidden="true"></div>
+<div class="tabs" role="tablist" aria-label="قوائم الأصدقاء"><button type="button" data-tab="discover" aria-selected="true">اكتشف</button><button type="button" data-tab="incoming" aria-selected="false">الواردة</button><button type="button" data-tab="outgoing" aria-selected="false">المرسلة</button><button type="button" data-tab="friends" aria-selected="false">أصدقائي</button></div>
+<form id="searchForm" class="search"><input id="search" maxlength="60" placeholder="ابحث باسم المستخدم" aria-label="بحث عن مستخدم"><button type="submit">بحث</button></form>
+<p id="feedback" role="status" aria-live="polite"></p><div id="list"></div>
+<p class="hint">المراسلة مع الأصدقاء فقط رح تُفعّل بعد ربط صلاحيات المحادثات بالخادم. هذه الصفحة مخصّصة لإدارة طلبات الصداقة.</p>
+</main>
+<script type="module">
+import {createClient} from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const db=createClient('https://xgoggkcwmagghkdzvjqz.supabase.co','sb_publishable_MUJZT-WcsKGC3JH3IwtJSA_9jZOnhsT',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+let me=null,tab='discover',relations=[],profiles=[];
+const list=document.getElementById('list'),feedback=document.getElementById('feedback'),search=document.getElementById('search');
+const setStatus=s=>feedback.textContent=s;
+const blocked=new Set();
+function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e}
+async function load(){
+ const {data:{user},error:authError}=await db.auth.getUser();
+ if(authError||!user){location.href='./account.html';return}me=user.id;
+ setStatus('جارٍ تحميل الأصدقاء...');
+ const [rs,bs]=await Promise.all([
+ db.from('chat_friendships').select('id,requester_id,addressee_id,status,created_at').or('requester_id.eq.'+me+',addressee_id.eq.'+me),
+ db.from('user_blocks').select('blocked_id').eq('blocker_id',me)
+ ]);
+ if(rs.error){setStatus('تعذّر تحميل العلاقات: '+rs.error.message);return}
+ relations=rs.data||[];blocked.clear();for(const b of bs.data||[])blocked.add(b.blocked_id);
+ await refreshProfiles();setStatus('');
+}
+async function refreshProfiles(){
+ const q=search.value.trim();
+ let query=db.from('profiles').select('id,display_name,avatar_path,settings').neq('id',me).limit(50);
+ if(q)query=query.ilike('display_name','%'+q.replace(/[%_,]/g,'')+'%');
+ const {data,error}=await query;
+ if(error){setStatus('تعذّر تحميل المستخدمين: '+error.message);return}
+ profiles=(data||[]).filter(p=>!blocked.has(p.id)&&p.settings?.private!==true);
+ // Load known friends even when they fall outside search results.
+ const ids=[...new Set(relations.flatMap(r=>[r.requester_id,r.addressee_id]).filter(id=>id!==me))];
+ if(ids.length){const {data:known}=await db.from('profiles').select('id,display_name,avatar_path,settings').in('id',ids);for(const p of known||[])if(!profiles.some(x=>x.id===p.id))profiles.push(p)}
+ render();
+}
+function relationFor(id){return relations.find(r=>r.requester_id===id||r.addressee_id===id)}
+function makeButton(label,action,secondary=false){const b=el('button',secondary?'secondary':'',label);b.type='button';b.addEventListener('click',action);return b}
+function card(p,r){
+ const c=el('article','card'),av=el('div','avatar','👤'),info=el('div','person'),actions=el('div','actions');
+ if(p.avatar_path){const img=el('img');img.alt='';const {data}=db.storage.from('avatars').getPublicUrl(p.avatar_path);if(data?.publicUrl){img.src=data.publicUrl;img.onerror=()=>img.remove();av.textContent='';av.append(img)}}
+ info.append(el('strong','',p.display_name||'مستخدم'),el('small','',r?.status==='accepted'?'من أصدقائك':r?.status==='pending'?(r.requester_id===me?'بانتظار القبول':'أرسل لك طلب صداقة'):''));
+ const action=async(fn,args)=>{
+ for(const b of actions.querySelectorAll('button'))b.disabled=true;
+ try{const {error}=await db.rpc(fn,args);if(error)throw error;await load();setStatus('تم تحديث الطلب بنجاح')}
+ catch(e){setStatus(e.message||'تعذّر إكمال العملية');for(const b of actions.querySelectorAll('button'))b.disabled=false}
+ };
+ if(!r||r.status==='rejected')actions.append(makeButton('إضافة صديق',()=>action('chat_send_friend_request',{p_other:p.id})));
+ else if(r.status==='pending'&&r.requester_id===me)actions.append(makeButton('إلغاء الطلب',()=>action('chat_cancel_friend_request',{p_id:r.id}),true));
+ else if(r.status==='pending'){actions.append(makeButton('قبول',()=>action('chat_respond_friend_request',{p_id:r.id,p_accept:true})),makeButton('رفض',()=>action('chat_respond_friend_request',{p_id:r.id,p_accept:false}),true))}
+ else if(r.status==='accepted')actions.append(makeButton('إزالة صداقة',()=>{if(confirm('متأكد بدك تلغي الصداقة؟'))action('chat_remove_friend',{p_other:p.id})},true));
+ c.append(av,info,actions);return c;
+}
+function render(){
+ list.replaceChildren();
+ document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===tab)));
+ const selected=profiles.filter(p=>{const r=relationFor(p.id);if(tab==='incoming')return r?.status==='pending'&&r.addressee_id===me;if(tab==='outgoing')return r?.status==='pending'&&r.requester_id===me;if(tab==='friends')return r?.status==='accepted';return !r||r.status==='rejected'});
+ selected.forEach(p=>list.append(card(p,relationFor(p.id))));
+}
+document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;render()}));
+document.getElementById('searchForm').addEventListener('submit',e=>{e.preventDefault();refreshProfiles()});
+load();
+</script></body></html>
