@@ -9,7 +9,19 @@ const packageDir=join(dir,'android/app/src/main/java/com/abualichat/app');mkdirS
 writeFileSync(join(packageDir,'MainActivity.java'),`package com.abualichat.app;\nimport android.os.Bundle;\nimport com.getcapacitor.BridgeActivity;\nimport com.abualichat.audio.CallAudioPlugin;\npublic class MainActivity extends BridgeActivity {\n @Override public void onCreate(Bundle savedInstanceState){registerPlugin(CallAudioPlugin.class);super.onCreate(savedInstanceState);}\n}\n`);
 // Keep the native plugin under the package declared in its source.
 const nativeDir=join(dir,'android/app/src/main/java/com/abualichat/audio');mkdirSync(nativeDir,{recursive:true});copyFileSync(join(dir,'CallAudioPlugin.java'),join(nativeDir,'CallAudioPlugin.java'));
-// Use the existing original project logo as the installed Android launcher icon.\nconst iconSvg=readFileSync(join(root,'development','icon.svg'),'utf8');\nconst logoMatch=iconSvg.match(/data:image\\/jpeg;base64,([A-Za-z0-9+/=]+)/);\nif(!logoMatch)throw new Error('Original logo JPEG not found in development/icon.svg');\nconst drawableDir=join(dir,'android/app/src/main/res/drawable-nodpi');\nmkdirSync(drawableDir,{recursive:true});\nwriteFileSync(join(drawableDir,'abuali_original_logo.jpg'),Buffer.from(logoMatch[1],'base64'));\nconst manifestPath=join(dir,'android/app/src/main/AndroidManifest.xml');let xml=readFileSync(manifestPath,'utf8');
-for(const p of ['android.permission.INTERNET','android.permission.CAMERA','android.permission.RECORD_AUDIO','android.permission.MODIFY_AUDIO_SETTINGS','android.permission.WAKE_LOCK','android.permission.POST_NOTIFICATIONS'])if(!xml.includes(p))xml=xml.replace('<application',`<uses-permission android:name="${p}" />\n    <application`);
-xml=xml.replace(/(<application\\b)([^>]*?)(>)/,(_match,open,attrs,close)=>{\n  const cleaned=attrs.replace(/\\sandroid:icon=\"[^\"]*\"/g,'').replace(/\\sandroid:roundIcon=\"[^\"]*\"/g,'');\n  return open+cleaned+' android:icon=\"@drawable/abuali_original_logo\"'+close;\n});\nwriteFileSync(manifestPath,xml);
+// Use the existing original project logo as the installed Android launcher icon.
+const iconSvg=readFileSync(join(root,'development','icon.svg'),'utf8');
+const logoMatch=iconSvg.match(/data:image\/jpeg;base64,([A-Za-z0-9+/=]+)/);
+if(!logoMatch)throw new Error('Original logo JPEG not found in development/icon.svg');
+const drawableDir=join(dir,'android/app/src/main/res/drawable-nodpi');
+mkdirSync(drawableDir,{recursive:true});
+writeFileSync(join(drawableDir,'abuali_original_logo.jpg'),Buffer.from(logoMatch[1],'base64'));
+const manifestPath=join(dir,'android/app/src/main/AndroidManifest.xml');let xml=readFileSync(manifestPath,'utf8');
+for(const p of ['android.permission.INTERNET','android.permission.CAMERA','android.permission.RECORD_AUDIO','android.permission.MODIFY_AUDIO_SETTINGS','android.permission.WAKE_LOCK','android.permission.POST_NOTIFICATIONS'])if(!xml.includes(p))xml=xml.replace('<application',`<uses-permission android:name="${p}" />
+    <application`);
+xml=xml.replace(/(<application\b)([^>]*?)(>)/,(_match,open,attrs,close)=>{
+  const cleaned=attrs.replace(/\sandroid:icon=\"[^\"]*\"/g,'').replace(/\sandroid:roundIcon=\"[^\"]*\"/g,'');
+  return open+cleaned+' android:icon=\"@drawable/abuali_original_logo\"'+close;
+});
+writeFileSync(manifestPath,xml);
 // The app is generated locally; debug APKs are for internal testing, not release signing.
