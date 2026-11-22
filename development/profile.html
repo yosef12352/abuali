@@ -1,7 +1,7 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#15101d"><title>الملف الشخصي — أبو علي شات</title><style>
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#3e2a50,#130f1b 65%);color:#fff;font:15px system-ui,Tahoma,sans-serif}main{max-width:620px;margin:auto;padding:16px}a{color:#e9cb91;text-decoration:none}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.brand{font-weight:800;color:#f4d8a4}.shell{border:1px solid #5c4965;border-radius:24px;overflow:hidden;background:#211a2c;box-shadow:0 18px 55px #0006}.cover{height:175px;background:linear-gradient(125deg,#422a57,#78556b,#c6a16d);display:grid;place-items:center;color:#f5e4c8;position:relative}.cover img{width:100%;height:100%;object-fit:contain}.body{padding:18px}.avatar{width:112px;height:112px;border-radius:50%;border:4px solid #86748d;background:#493c59;display:grid;place-items:center;overflow:hidden;margin-top:-72px;position:relative;font-size:40px;box-shadow:0 0 0 5px #211a2c}.avatar.online{border-color:#38d88c;animation:pulse 2.6s ease-in-out infinite}.avatar.offline{border-color:#dc6472}.avatar img{width:100%;height:100%;object-fit:contain}@keyframes pulse{50%{box-shadow:0 0 0 9px #38d88c00}}@media(prefers-reduced-motion:reduce){.avatar.online{animation:none}}h1{font-size:25px;margin:16px 0 5px}.bio{color:#cdbbd5;line-height:1.8;overflow-wrap:anywhere}.presence{color:#c7b5ce;font-size:13px}.presence.online{color:#76e7ab}.presence.offline{color:#ef9da6}.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}button,.btn{font:inherit;font-weight:700;border-radius:13px;border:1px solid #b69560;background:linear-gradient(120deg,#efd49b,#ba975e);color:#211724;padding:12px 15px;cursor:pointer;flex:1;text-align:center;min-width:110px}.secondary{background:#35283f;color:#f0dfef;border-color:#675273}button:disabled{opacity:.55}#feedback{min-height:25px;color:#e6c993;margin:15px 0}.privacy{margin-top:14px;color:#aa9ab7;font-size:12px}</style></head><body><main>
 <div class="top"><a href="./friends.html">❮ الأصدقاء</a><span class="brand">✦ أبو علي شات</span><a href="./index.html">الدردشات</a></div>
-<section class="shell"><div class="cover" id="cover">الملف الشخصي</div><div class="body"><div class="avatar" id="avatar">👤</div><h1 id="name">جارٍ التحميل...</h1><div class="presence" id="presence">الحالة غير متاحة</div><p class="bio" id="bio"></p><div class="actions" id="actions"></div><p id="feedback" role="status"></p><p class="privacy">لا تظهر المعلومات الخاصة للمستخدمين المحظورين أو غير المصرّح لهم.</p></div></section>
+<section class="shell"><div class="cover" id="cover">الملف الشخصي</div><div class="body"><div class="avatar" id="avatar">👤</div><h1 id="name">جارٍ التحميل...</h1><div class="presence" id="presence">الحالة غير متاحة</div><p class="bio" id="bio"></p><div class="actions" id="actions"></div><div id="coverEditor" hidden><label for="coverFile">تغيير صورة الغلاف</label><input type="file" id="coverFile" accept="image/jpeg,image/png,image/webp" style="display:block;width:100%;margin:12px 0;color:#f4d8a4"><button id="saveCover" disabled>حفظ الغلاف</button></div><p id="feedback" role="status"></p><p class="privacy">لا تظهر المعلومات الخاصة للمستخدمين المحظورين أو غير المصرّح لهم.</p></div></section>
 </main><script type="module">
 import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const db=createClient('https://xgoggkcwmagghkdzvjqz.supabase.co','sb_publishable_MUJZT-WcsKGC3JH3IwtJSA_9jZOnhsT',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
@@ -14,13 +14,47 @@ async function init(){
  if(!id||!/^[0-9a-f-]{36}$/i.test(id)){say('رابط الملف الشخصي غير صحيح');return}
  const{data,error}=await db.rpc('chat_view_profile',{p_user:id});
  if(error||!data?.length){$('name').textContent='الملف غير متاح';say('قد يكون الحساب خاصاً أو محظوراً');return}
- const p=data[0];$('name').textContent=p.display_name||'مستخدم';$('bio').textContent=p.bio||'مرحباً بكم في ملفي الشخصي';await showImage(p.avatar_path,$('avatar'));
- if(id===user.id){$('actions').append(btn('تعديل ملفي',()=>location.href='./index.html#settings'));return}
+ const p=data[0];$('name').textContent=p.display_name||'مستخدم';$('bio').textContent=p.bio||'مرحباً بكم في ملفي الشخصي';await showImage(p.avatar_path,$('avatar'));await showImage(p.cover_path,$('cover'));
+ if(id===user.id){$('actions').append(btn('تعديل ملفي',()=>location.href='./index.html#settings'));$('coverEditor').hidden=false;initCoverUpload(user.id);return}
  const{data:presence}=await db.rpc('chat_get_presence',{p_users:[id]});
  if(presence?.length){const online=presence[0].is_online;$('avatar').classList.add(online?'online':'offline');$('presence').className='presence '+(online?'online':'offline');$('presence').textContent=online?'● متصل الآن':'● غير متصل'}
  if(p.is_friend){$('actions').append(btn('مراسلة',()=>location.href='./index.html'),btn('اتصال صوتي',()=>location.href='./index.html',true),btn('اتصال فيديو',()=>location.href='./index.html',true))}
  else if(!p.friendship_status)$('actions').append(btn('إرسال طلب صداقة',async()=>{const{error}=await db.rpc('chat_send_friend_request',{p_other:id});say(error?error.message:'تم إرسال طلب الصداقة');if(!error)$('actions').replaceChildren()}));
  else $('actions').append(btn(p.friendship_status==='pending'?'طلب صداقة معلّق':'طلب صداقة مرفوض',()=>{},true));
+}
+function initCoverUpload(uid){
+ const input=$('coverFile'),save=$('saveCover');let pending=null,preview=null;
+ input.addEventListener('change',()=>{
+  const file=input.files?.[0];pending=null;save.disabled=true;
+  if(preview){URL.revokeObjectURL(preview);preview=null}
+  if(!file)return;
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>12*1024*1024){say('اختار صورة JPG أو PNG أو WebP أقل من 12 ميغابايت');return}
+  pending=file;preview=URL.createObjectURL(file);
+  const img=document.createElement('img');img.alt='معاينة الغلاف';img.src=preview;$('cover').replaceChildren(img);
+  save.disabled=false;say('راجع الغلاف، وبعدين اضغط حفظ');
+ });
+ save.addEventListener('click',async()=>{
+  if(!pending)return;save.disabled=true;
+  try{
+   say('جارٍ تجهيز الغلاف...');
+   const bitmap=await createImageBitmap(pending);
+   let blob;try{
+    const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=500;
+    const ctx=canvas.getContext('2d');if(!ctx)throw Error('المتصفح لا يدعم معالجة الصور');
+    ctx.fillStyle='#34283f';ctx.fillRect(0,0,1200,500);
+    const scale=Math.min(1200/bitmap.width,500/bitmap.height);
+    const w=bitmap.width*scale,h=bitmap.height*scale;
+    ctx.drawImage(bitmap,(1200-w)/2,(500-h)/2,w,h);
+    blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('تعذّر تجهيز الغلاف')),'image/jpeg',.86));
+   }finally{bitmap.close()}
+   const path=uid+'/cover-'+crypto.randomUUID()+'.jpg';
+   const{error:uploadError}=await db.storage.from('profile-avatars').upload(path,blob,{contentType:'image/jpeg',upsert:false});
+   if(uploadError)throw uploadError;
+   const{error:saveError}=await db.rpc('chat_save_my_cover',{p_cover_path:path});
+   if(saveError){await db.storage.from('profile-avatars').remove([path]);throw saveError}
+   say('✓ تم حفظ الغلاف بنجاح');pending=null;input.value='';
+  }catch(e){say('تعذّر حفظ الغلاف: '+(e.message||'خطأ'));save.disabled=false}
+ });
 }
 init();
 </script></body></html>
