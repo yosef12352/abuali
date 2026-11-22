@@ -7,7 +7,7 @@
 <div class="cover" aria-hidden="true"></div>
 <div class="tabs" role="tablist" aria-label="قوائم الأصدقاء"><button type="button" data-tab="discover" aria-selected="true">اكتشف</button><button type="button" data-tab="incoming" aria-selected="false">الواردة</button><button type="button" data-tab="outgoing" aria-selected="false">المرسلة</button><button type="button" data-tab="friends" aria-selected="false">أصدقائي</button></div>
 <form id="searchForm" class="search"><input id="search" maxlength="60" placeholder="ابحث باسم المستخدم" aria-label="بحث عن مستخدم"><button type="submit">بحث</button></form>
-<p id="feedback" role="status" aria-live="polite"></p><div id="list"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><p id="feedback" role="status" aria-live="polite"></p><button id="refreshFriends" class="secondary" type="button" aria-label="تحديث الأصدقاء">↻ تحديث</button></div><div id="list"></div>
 <p class="hint">المراسلة مع الأصدقاء فقط رح تُفعّل بعد ربط صلاحيات المحادثات بالخادم. هذه الصفحة مخصّصة لإدارة طلبات الصداقة.</p>
 </main>
 <script type="module">
@@ -28,7 +28,7 @@ async function load(){
  ]);
  if(rs.error){setStatus('تعذّر تحميل العلاقات: '+rs.error.message);return}
  relations=rs.data||[];blocked.clear();for(const b of bs.data||[])blocked.add(b.blocked_id);
- await refreshProfiles();setStatus('');
+ await refreshProfiles();if(!feedback.textContent.startsWith('تعذّر'))setStatus('');
 }
 async function refreshProfiles(){
  const q=search.value.trim();
@@ -85,6 +85,7 @@ function render(){
 }
 document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;render()}));
 document.getElementById('searchForm').addEventListener('submit',e=>{e.preventDefault();refreshProfiles()});
+document.getElementById('refreshFriends').addEventListener('click',load);
 load();
 let heartbeatTimer=null,presenceTimer=null;
 function startPresence(){if(heartbeatTimer)return;const beat=()=>{if(!document.hidden&&me)db.rpc('chat_presence_heartbeat').then(()=>{})};beat();heartbeatTimer=setInterval(beat,45000);presenceTimer=setInterval(async()=>{if(!document.hidden&&me){await refreshPresence();render()}},30000)}
