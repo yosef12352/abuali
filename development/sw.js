@@ -1,14 +1,34 @@
-const CACHE='abu-ali-chat-royal-v7';
+const CACHE='abu-ali-chat-royal-v8';
 const ASSETS=['./index.html','./account.html','./friends.html','./profile.html','./group-call.html','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('abu-ali-chat-')&&k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
 self.addEventListener('fetch',event=>{
- const request=event.request;if(request.method!=='GET')return;
- const url=new URL(request.url);if(url.origin!==self.location.origin)return;
- const isPage=request.mode==='navigate'||url.pathname.endsWith('/index.html')||url.pathname.endsWith('/account.html');
- if(isPage){event.respondWith(fetch(request,{cache:'no-store'}).catch(()=>caches.match(request).then(hit=>hit||caches.match('./index.html'))));return}
- if(!ASSETS.some(a=>url.pathname.endsWith(a.slice(2))))return;
- event.respondWith(caches.match(request).then(hit=>hit||fetch(request)));
+ const request=event.request;
+ if(request.method!=='GET')return;
+ const url=new URL(request.url);
+ if(url.origin!==self.location.origin)return;
+ const asset=ASSETS.find(a=>url.pathname.endsWith(a.slice(2)));
+ if(request.mode==='navigate'){
+  event.respondWith((async()=>{
+   try{
+    const response=await fetch(request,{cache:'no-store'});
+    if(response.ok&&asset){const cache=await caches.open(CACHE);await cache.put(asset,response.clone());}
+    return response;
+   }catch{
+    const cached=await caches.match(asset||request,{ignoreSearch:true});
+    return cached||Response.error();
+   }
+  })());
+  return;
+ }
+ if(!asset)return;
+ event.respondWith((async()=>{
+  try{
+   const response=await fetch(request,{cache:'no-store'});
+   if(response.ok){const cache=await caches.open(CACHE);await cache.put(asset,response.clone());}
+   return response;
+  }catch{return (await caches.match(asset))||Response.error();}
+ })());
 });
 self.addEventListener('notificationclick',event=>{
  event.notification.close();
