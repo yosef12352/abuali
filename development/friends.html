@@ -38,8 +38,9 @@ async function refreshProfiles(){
  const {data,error}=await db.rpc('chat_discover_people',{p_search:q,p_limit:50});
  if(error){setStatus('تعذّر تحميل المستخدمين: '+error.message);return}
  profiles=(data||[]).filter(p=>!blocked.has(p.id));
- const {data:friends,error:friendsError}=await db.rpc('chat_my_friend_profiles');
- if(!friendsError)for(const p of friends||[])if(!blocked.has(p.id)&&!profiles.some(x=>x.id===p.id))profiles.push(p);
+ const {data:friends,error:friendsError}=await db.rpc('chat_my_relation_profiles');
+ if(friendsError){setStatus('تعذّر تحميل طلبات الصداقة: '+friendsError.message);return}
+ for(const p of friends||[])if(!blocked.has(p.id)&&!profiles.some(x=>x.id===p.id))profiles.push(p);
  await refreshPresence();render();
 }
 async function refreshPresence(){
