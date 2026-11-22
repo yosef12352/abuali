@@ -1,0 +1,20 @@
+{
+  "name": "أبو علي شات",
+  "short_name": "أبو علي شات",
+  "description": "تطبيق دردشة عربية للمحادثات والرسائل والوسائط، يتطلب اتصالاً بالإنترنت للمزامنة.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#1a0b2e",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
