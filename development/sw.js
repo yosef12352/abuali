@@ -1,5 +1,5 @@
-const CACHE='abu-ali-chat-royal-v10';
-const ASSETS=['./index.html','./account.html','./friends.html','./profile.html','./group-call.html','./manifest.webmanifest','./icon.svg','./premium-ui.css'];
+const CACHE='abu-ali-chat-royal-v11';
+const ASSETS=['./index.html','./account.html','./friends.html','./profile.html','./group-call.html','./manifest.webmanifest','./brand-logo.svg','./premium-ui.css','./brand-logo.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('abu-ali-chat-')&&k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
 self.addEventListener('fetch',event=>{
@@ -50,7 +50,7 @@ self.addEventListener('push',event=>{
  const conversationId=typeof payload.conversationId==='string'&&uuid.test(payload.conversationId)?payload.conversationId:null;
  const options={
   body:typeof payload.body==='string'?payload.body.slice(0,160):'وصلتك رسالة جديدة',
-  icon:'./icon.svg',badge:'./icon.svg',
+  icon:'./brand-logo.svg',badge:'./brand-logo.svg',
   tag:conversationId?'abu-ali-chat-'+conversationId:'abu-ali-chat-message',
   renotify:false,
   data:{conversationId},
