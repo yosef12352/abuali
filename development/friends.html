@@ -13,7 +13,7 @@
 <script type="module">
 import {createClient} from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const db=createClient('https://xgoggkcwmagghkdzvjqz.supabase.co','sb_publishable_MUJZT-WcsKGC3JH3IwtJSA_9jZOnhsT',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
-let me=null,tab='discover',relations=[],profiles=[];let presence=new Map();
+let me=null,tab='discover',relations=[],profiles=[];let presence=new Map();const avatarCache=new Map();
 const list=document.getElementById('list'),feedback=document.getElementById('feedback'),search=document.getElementById('search');
 const setStatus=s=>feedback.textContent=s;
 const blocked=new Set();
@@ -50,8 +50,13 @@ function card(p,r){
  const state=presence.has(p.id)?(presence.get(p.id)?'online':'offline'):'unknown';const c=el('article','card'),av=el('div','avatar '+state,'👤'),info=el('div','person'),actions=el('div','actions');
  if(p.avatar_path){
   const img=el('img');img.alt='';
-  db.storage.from('profile-avatars').createSignedUrl(p.avatar_path,300).then(({data,error})=>{
-   if(!error&&data?.signedUrl){img.src=data.signedUrl;av.textContent='';av.append(img);img.onerror=()=>{av.textContent='👤'}}
+  const show=url=>{img.src=url;av.textContent='';av.append(img);img.onerror=()=>{av.textContent='👤'}};
+  const cached=avatarCache.get(p.avatar_path);
+  if(cached&&cached.expires>Date.now())show(cached.url);
+  else db.storage.from('profile-avatars').createSignedUrl(p.avatar_path,900).then(({data,error})=>{
+   if(!error&&data?.signedUrl){
+    avatarCache.set(p.avatar_path,{url:data.signedUrl,expires:Date.now()+12*60*1000});show(data.signedUrl);
+   }
   });
  }
  info.append(el('strong','',p.display_name||'مستخدم'),el('small','',state==='online'?'● متصل الآن':state==='offline'?'● غير متصل':'الحالة مخفية'));
@@ -69,7 +74,12 @@ function card(p,r){
 }
 function render(){
  list.replaceChildren();
- document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===tab)));
+ document.querySelectorAll('[data-tab]').forEach(b=>{
+  b.setAttribute('aria-selected',String(b.dataset.tab===tab));
+  const count=relations.filter(r=>r.status==='pending'&&(b.dataset.tab==='incoming'?r.addressee_id===me:b.dataset.tab==='outgoing'?r.requester_id===me:false)).length;
+  const base=b.dataset.label||b.textContent.replace(/\s*\(\d+\)$/,'');b.dataset.label=base;
+  b.textContent=count?base+' ('+count+')':base;
+ });
  const selected=profiles.filter(p=>{const r=relationFor(p.id);if(tab==='incoming')return r?.status==='pending'&&r.addressee_id===me;if(tab==='outgoing')return r?.status==='pending'&&r.requester_id===me;if(tab==='friends')return r?.status==='accepted';return !r||r.status==='rejected'});
  selected.forEach(p=>list.append(card(p,relationFor(p.id))));
 }
@@ -80,5 +90,6 @@ let heartbeatTimer=null,presenceTimer=null;
 function startPresence(){if(heartbeatTimer)return;const beat=()=>{if(!document.hidden&&me)db.rpc('chat_presence_heartbeat').then(()=>{})};beat();heartbeatTimer=setInterval(beat,45000);presenceTimer=setInterval(async()=>{if(!document.hidden&&me){await refreshPresence();render()}},30000)}
 // Heartbeat starts only after authentication succeeds.
 const authWatcher=setInterval(()=>{if(me){clearInterval(authWatcher);startPresence()}},500);
+window.addEventListener('focus',()=>{if(me)load()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&me){db.rpc('chat_presence_heartbeat').then(()=>{});refreshPresence().then(render)}});
 </script></body></html>
