@@ -185,7 +185,7 @@ document.getElementById('requestVideoCall').addEventListener('click',()=>request
 let activeWebCall=null,callSignalTimer=null,callStatusTimer=null,startingWebCall=false,callRetryTimer=null,callDurationTimer=null;
 const failedCallStarts=new Set();
 const callPanel=document.getElementById('liveCallPanel'),callState=document.getElementById('liveCallStatus');
-function showCallPeer(record){const peer=chatDirectory.find(c=>c.peer_id===(record.caller_id===currentUser.id?record.callee_id:record.caller_id));const name=peer?.peer_name||'جهة الاتصال';document.getElementById('liveCallPeer').textContent=name;const portrait=document.getElementById('liveCallPortrait');portrait.textContent=name.trim().slice(0,1)||'◉';if(peer?.conversation_id)refreshPeerAvatar(peer.conversation_id,portrait).catch(()=>{});}
+function showCallPeer(record){const peer=chatDirectory.find(c=>c.peer_id===(record.caller_id===currentUser.id?record.callee_id:record.caller_id));const name=peer?.peer_name||'جهة الاتصال';document.getElementById('liveCallPeer').textContent=name;const portrait=document.getElementById('liveCallPortrait');portrait.textContent=name.trim().slice(0,1)||'◉';if(peer?.conversation_id)try{refreshPeerAvatar(peer.conversation_id,portrait)}catch(e){console.warn('Call portrait unavailable',e)}}
 function callAudioElement(){return document.getElementById(activeWebCall?.stream.getVideoTracks().length?'liveRemoteVideo':'liveRemoteAudio')}
 
 async function sendWebSignal(call,type,payload){
