@@ -508,7 +508,9 @@ async function refreshPushStatus(){
   pushPublicKey=data?.configured?data.publicKey:null;
   pushEnable.disabled=!pushPublicKey||!!subscription;
   pushDisable.disabled=!subscription;
-  pushStatus.textContent=subscription?'هالجهاز مشترك بإشعارات Push'+(pushPublicKey?'':'، لكن إعداد خادم الإرسال غير مكتمل'):pushPublicKey?'الجهاز جاهز للاشتراك، بعد السماح بالإشعارات':'إعداد مفتاح Push على الخادم لسه غير مكتمل، ما فينا نفعّل الاشتراك حالياً';
+  const nativeAndroid=!!(window.Capacitor?.isNativePlatform?.()&&window.Capacitor.getPlatform?.()==='android');
+  pushStatus.textContent=nativeAndroid?'إشعارات أندرويد بالخلفية تحتاج إعداد Firebase Cloud Messaging وتسجيل رمز الجهاز؛ اشتراك Web Push وحده لا يكفي.':subscription?(pushPublicKey?'اشتراك Web Push محفوظ بهذا المتصفح؛ توصيل الإشعارات يحتاج خدمة إرسال مفعّلة.':'الاشتراك محفوظ لكن مفتاح خادم Push غير مهيأ؛ لن تصل إشعارات الخلفية حتى يكتمل الإعداد.'):pushPublicKey?'الجهاز جاهز لاشتراك Web Push، بعد السماح بالإشعارات':'إعداد مفتاح Push على الخادم لسه غير مكتمل، ما فينا نفعّل الاشتراك حالياً';
+  if(nativeAndroid)pushEnable.disabled=true;
  }catch(error){pushEnable.disabled=true;pushDisable.disabled=true;pushStatus.textContent='تعذّر التحقق من خدمة Push: '+(error.message||'خطأ')}
 }
 pushEnable.addEventListener('click',async()=>{
