@@ -510,12 +510,37 @@ async function refreshPushStatus(){
   pushDisable.disabled=!subscription;
   const nativeAndroid=!!(window.Capacitor?.isNativePlatform?.()&&window.Capacitor.getPlatform?.()==='android');
   pushStatus.textContent=nativeAndroid?'إشعارات أندرويد بالخلفية تحتاج إعداد Firebase Cloud Messaging وتسجيل رمز الجهاز؛ اشتراك Web Push وحده لا يكفي.':subscription?(pushPublicKey?'اشتراك Web Push محفوظ بهذا المتصفح؛ توصيل الإشعارات يحتاج خدمة إرسال مفعّلة.':'الاشتراك محفوظ لكن مفتاح خادم Push غير مهيأ؛ لن تصل إشعارات الخلفية حتى يكتمل الإعداد.'):pushPublicKey?'الجهاز جاهز لاشتراك Web Push، بعد السماح بالإشعارات':'إعداد مفتاح Push على الخادم لسه غير مكتمل، ما فينا نفعّل الاشتراك حالياً';
-  if(nativeAndroid)pushEnable.disabled=true;
+  if(nativeAndroid){pushEnable.disabled=false;pushDisable.disabled=false;}
  }catch(error){pushEnable.disabled=true;pushDisable.disabled=true;pushStatus.textContent='تعذّر التحقق من خدمة Push: '+(error.message||'خطأ')}
+}
+const isNativeAndroidPush=()=>window.Capacitor?.isNativePlatform?.()&&window.Capacitor?.getPlatform?.()==='android';
+let nativePushListenersReady=false;
+async function registerNativePush(){
+ const plugin=window.Capacitor?.Plugins?.PushNotifications;
+ if(!plugin)throw Error('إضافة إشعارات أندرويد غير مثبتة في نسخة APK الحالية');
+ if(!nativePushListenersReady){
+  await plugin.addListener('registration',async({value})=>{
+   if(!value)return;
+   const {error}=await supabase.from('chat_android_push_tokens').upsert({user_id:currentUser.id,token:value,updated_at:new Date().toISOString()},{onConflict:'token'});
+   pushStatus.textContent=error?'تعذّر حفظ رمز الجهاز: '+error.message:'تم تسجيل جهاز أندرويد؛ ننتظر تفعيل خادم الإرسال.';
+  });
+  await plugin.addListener('registrationError',e=>{pushStatus.textContent='فشل تسجيل إشعارات أندرويد: '+(e?.error||'خطأ غير معروف')});
+  await plugin.addListener('pushNotificationActionPerformed',e=>{
+   const id=e?.notification?.data?.conversationId;
+   if(typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))location.assign('./index.html?openChat='+encodeURIComponent(id));
+  });
+  nativePushListenersReady=true;
+ }
+ const permissions=await plugin.checkPermissions();
+ const granted=permissions.receive==='granted'?permissions:await plugin.requestPermissions();
+ if(granted.receive!=='granted')throw Error('لازم تسمح للتطبيق بعرض الإشعارات');
+ await plugin.register();
+ pushStatus.textContent='عم نسجّل جهاز أندرويد مع Firebase...';
 }
 pushEnable.addEventListener('click',async()=>{
  pushEnable.disabled=true;pushStatus.textContent='عم نسجّل هالجهاز...';
  try{
+  if(isNativeAndroidPush()){await registerNativePush();return}
   if(!pushPublicKey)throw Error('مفتاح Push غير مجهّز على الخادم');
   let permission=Notification.permission;if(permission==='default')permission=await Notification.requestPermission();
   if(permission!=='granted')throw Error('لازم تسمح بالإشعارات أولاً');
@@ -541,6 +566,14 @@ async function clearThisDevicePushForLogout(){
 pushDisable.addEventListener('click',async()=>{
  pushDisable.disabled=true;
  try{
+  if(isNativeAndroidPush()){
+   const plugin=window.Capacitor?.Plugins?.PushNotifications;
+   if(plugin)await plugin.removeAllListeners();nativePushListenersReady=false;
+   const {error}=await supabase.from('chat_android_push_tokens').delete().eq('user_id',currentUser.id);
+   if(error)throw error;
+   pushStatus.textContent='تم إيقاف تسجيل الإشعارات لهذا الحساب؛ قد يلزم تعطيلها من إعدادات أندرويد أيضاً.';
+   return;
+  }
   const registration=await getPushRegistration(),subscription=await registration.pushManager.getSubscription();
   if(subscription){
    const {error}=await supabase.from('chat_push_subscriptions').delete().eq('user_id',currentUser.id).eq('endpoint',subscription.endpoint);
