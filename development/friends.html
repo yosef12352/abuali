@@ -32,14 +32,14 @@ async function load(){
 }
 async function refreshProfiles(){
  const q=search.value.trim();
- let query=db.from('profiles').select('id,display_name,avatar_path,settings').neq('id',me).limit(50);
- if(q)query=query.ilike('display_name','%'+q.replace(/[%_,]/g,'')+'%');
- const {data,error}=await query;
+ const {data,error}=await db.rpc('chat_discover_people',{p_search:q,p_limit:50});
  if(error){setStatus('تعذّر تحميل المستخدمين: '+error.message);return}
- profiles=(data||[]).filter(p=>!blocked.has(p.id)&&p.settings?.private!==true);
- // Load known friends even when they fall outside search results.
- const ids=[...new Set(relations.flatMap(r=>[r.requester_id,r.addressee_id]).filter(id=>id!==me))];
- if(ids.length){const {data:known}=await db.from('profiles').select('id,display_name,avatar_path,settings').in('id',ids);for(const p of known||[])if(!profiles.some(x=>x.id===p.id))profiles.push(p)}
+ profiles=(data||[]).filter(p=>!blocked.has(p.id));
+ const ids=[...new Set(relations.flatMap(r=>[r.requester_id,r.addressee_id]).filter(id=>id!==me&&!profiles.some(p=>p.id===id)))];
+ if(ids.length){
+  const {data:known}=await db.rpc('chat_discover_people',{p_search:'',p_limit:50});
+  for(const p of known||[])if(ids.includes(p.id)&&!profiles.some(x=>x.id===p.id))profiles.push(p);
+ }
  render();
 }
 function relationFor(id){return relations.find(r=>r.requester_id===id||r.addressee_id===id)}
@@ -53,7 +53,8 @@ function card(p,r){
  try{const {error}=await db.rpc(fn,args);if(error)throw error;await load();setStatus('تم تحديث الطلب بنجاح')}
  catch(e){setStatus(e.message||'تعذّر إكمال العملية');for(const b of actions.querySelectorAll('button'))b.disabled=false}
  };
- if(!r||r.status==='rejected')actions.append(makeButton('إضافة صديق',()=>action('chat_send_friend_request',{p_other:p.id})));
+ if(!r)actions.append(makeButton('إضافة صديق',()=>action('chat_send_friend_request',{p_other:p.id})));
+ else if(r.status==='rejected')actions.append(makeButton('طلب مرفوض',()=>{},true));
  else if(r.status==='pending'&&r.requester_id===me)actions.append(makeButton('إلغاء الطلب',()=>action('chat_cancel_friend_request',{p_id:r.id}),true));
  else if(r.status==='pending'){actions.append(makeButton('قبول',()=>action('chat_respond_friend_request',{p_id:r.id,p_accept:true})),makeButton('رفض',()=>action('chat_respond_friend_request',{p_id:r.id,p_accept:false}),true))}
  else if(r.status==='accepted')actions.append(makeButton('إزالة صداقة',()=>{if(confirm('متأكد بدك تلغي الصداقة؟'))action('chat_remove_friend',{p_other:p.id})},true));
