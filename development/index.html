@@ -538,7 +538,19 @@ try{
  const url=new URL(location.href),chatId=url.searchParams.get('openChat');
  if(chatId){
   url.searchParams.delete('openChat');history.replaceState(null,'',url.pathname+url.search+url.hash);
-  if(/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(chatId)&&chatDirectory.some(c=>c.conversation_id===chatId))await openConversation(chatId);
+  if(/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(chatId)&&chatDirectory.some(c=>c.conversation_id===chatId)){
+   await openConversation(chatId);
+   const action=url.searchParams.get('action');
+   if(action==='audio'||action==='video'){
+    const peerSelect=document.getElementById('callPeerSelect');
+    if(peerSelect&&Array.from(peerSelect.options).some(o=>o.value===chatId)){
+     peerSelect.value=chatId;
+     // Explicitly initiate only after the user tapped the call button on the profile.
+     await requestCall(action);
+    }
+   }
+   url.searchParams.delete('action');history.replaceState(null,'',url.pathname+url.search+url.hash);
+  }
  }
 }catch(error){console.warn('تعذّر فتح المحادثة من التنبيه',error)}
 document.addEventListener('abuAliConnectionRestored',()=>{if(activeConversation&&document.getElementById('chats').classList.contains('in-conversation')){refreshActiveChat(activeConversation);refreshAttachments(activeConversation)}else loadConversations()});
