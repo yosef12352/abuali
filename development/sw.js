@@ -1,5 +1,5 @@
-const CACHE='abu-ali-chat-royal-v5';
-const ASSETS=['./index.html','./account.html','./manifest.webmanifest','./icon.svg'];
+const CACHE='abu-ali-chat-royal-v6';
+const ASSETS=['./index.html','./account.html','./friends.html','./profile.html','./group-call.html','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('abu-ali-chat-')&&k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
 self.addEventListener('fetch',event=>{
@@ -12,12 +12,13 @@ self.addEventListener('fetch',event=>{
 });
 self.addEventListener('notificationclick',event=>{
  event.notification.close();
- const id=event.notification.data?.conversationId;
+ const rawId=event.notification.data?.conversationId;
+ const id=typeof rawId==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawId)?rawId:null;
  event.waitUntil((async()=>{
   const pages=await self.clients.matchAll({type:'window',includeUncontrolled:true});
   const existing=pages.find(client=>{const url=new URL(client.url);return url.origin===self.location.origin&&(url.pathname.endsWith('/index.html')||url.pathname.endsWith('/'))});
   if(existing){await existing.focus();if(id)existing.postMessage({type:'OPEN_CHAT_FROM_NOTIFICATION',conversationId:id});return}
-  await self.clients.openWindow(id&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id)?'./index.html?openChat='+encodeURIComponent(id):'./index.html');
+  await self.clients.openWindow(id?'./index.html?openChat='+encodeURIComponent(id):'./index.html');
  })());
 });
 
