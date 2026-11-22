@@ -8,26 +8,26 @@ const db=createClient('https://xgoggkcwmagghkdzvjqz.supabase.co','sb_publishable
 const $=id=>document.getElementById(id),params=new URLSearchParams(location.search),requestedId=params.get('id');
 let id=requestedId;
 const say=s=>$('feedback').textContent=s;
-const btn=(label,fn,secondary=false)=>{const b=document.createElement('button');b.textContent=label;if(secondary)b.className='secondary';b.onclick=fn;return b};
-async function showImage(path,target){if(!path)return;const{data,error}=await db.storage.from('profile-avatars').createSignedUrl(path,900);if(error||!data?.signedUrl)return;const img=document.createElement('img');img.alt=target.id==='cover'?'صورة الغلاف':'الصورة الشخصية';img.decoding='async';img.src=data.signedUrl;img.onerror=()=>{if(target.id==='cover')target.textContent='الغلاف غير متاح حالياً';else target.textContent='👤'};target.replaceChildren(img)}
+const btn=(label,fn,secondary=false)=>{const b=document.createElement('button');b.type='button';b.textContent=label;if(secondary)b.className='secondary';b.addEventListener('click',async()=>{if(b.disabled)return;b.disabled=true;try{await fn()}catch(e){say('تعذّر تنفيذ العملية: '+(e.message||'خطأ غير معروف'))}finally{if(b.isConnected&&b.textContent!=='تم إرسال الطلب')b.disabled=false}});return b};
+async function showImage(path,target){if(!path)return;const{data,error}=await db.storage.from('profile-avatars').createSignedUrl(path,900);if(error||!data?.signedUrl){if(target.id==='cover')target.textContent='لا يوجد غلاف متاح';return}const img=document.createElement('img');img.alt=target.id==='cover'?'صورة الغلاف':'الصورة الشخصية';img.decoding='async';img.src=data.signedUrl;img.onerror=()=>{if(target.id==='cover')target.textContent='الغلاف غير متاح حالياً';else target.textContent='👤'};target.replaceChildren(img)}
 async function init(){
  const{data:{user}}=await db.auth.getUser();if(!user){location.replace('./account.html');return}
  if(!id)id=user.id;
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)){say('رابط الملف الشخصي غير صحيح');return}
  const{data,error}=await db.rpc('chat_view_profile',{p_user:id});
- if(error||!data?.length){$('name').textContent='الملف غير متاح';say('قد يكون الحساب خاصاً أو محظوراً');return}
+ if(error||!data?.length){$('name').textContent='الملف غير متاح';say(error?'تعذّر تحميل الملف: '+error.message:'قد يكون الحساب خاصاً أو محظوراً');return}
  const p=data[0];$('name').textContent=p.display_name||'مستخدم';$('bio').textContent=p.bio||'مرحباً بكم في ملفي الشخصي';await showImage(p.avatar_path,$('avatar'));await showImage(p.cover_path,$('cover'));
  if(id===user.id){$('actions').append(btn('✎ تعديل اسمي وإعداداتي',()=>location.href='./index.html#settings'),btn('📷 تغيير صورة الملف',()=>location.href='./index.html#settings',true));$('coverEditor').hidden=false;initCoverUpload(user.id);return}
  const{data:presence}=await db.rpc('chat_get_presence',{p_users:[id]});
  if(presence?.length){const online=presence[0].is_online;$('avatar').classList.add(online?'online':'offline');$('presence').className='presence '+(online?'online':'offline');$('presence').textContent=online?'● متصل الآن':'● غير متصل'}
  if(p.is_friend){$('actions').append(btn('مراسلة',()=>openChat('chat')),btn('اتصال صوتي',()=>openChat('audio'),true),btn('اتصال فيديو',()=>openChat('video'),true))}
- else if(!p.friendship_status)$('actions').append(btn('إرسال طلب صداقة',async()=>{const{error}=await db.rpc('chat_send_friend_request',{p_other:id});say(error?error.message:'تم إرسال طلب الصداقة');if(!error){$('actions').replaceChildren();$('actions').append(btn('تم إرسال الطلب',()=>{},true));$('actions').firstElementChild.disabled=true}}));
+ else if(!p.friendship_status)$('actions').append(btn('إرسال طلب صداقة',async()=>{const{error}=await db.rpc('chat_send_friend_request',{p_other:id});say(error?error.message:'تم إرسال طلب الصداقة');if(!error){$('actions').replaceChildren();const done=btn('تم إرسال الطلب',()=>{},true);done.disabled=true;$('actions').append(done)}}));
  else if(p.friendship_status==='pending'){
   const{data:relations,error:relationError}=await db.from('chat_friendships').select('id,requester_id,addressee_id,status').eq('status','pending').or('requester_id.eq.'+user.id+',addressee_id.eq.'+user.id);
   const relation=!relationError&&(relations||[]).find(r=>r.requester_id===id||r.addressee_id===id);
   if(relation?.requester_id===user.id)$('actions').append(btn('إلغاء طلب الصداقة',async()=>{const{error}=await db.rpc('chat_cancel_friend_request',{p_id:relation.id});if(error)say(error.message);else location.reload()},true));
   else if(relation){$('actions').append(btn('قبول الصداقة',async()=>{const{error}=await db.rpc('chat_respond_friend_request',{p_id:relation.id,p_accept:true});if(error)say(error.message);else location.reload()}),btn('رفض',async()=>{const{error}=await db.rpc('chat_respond_friend_request',{p_id:relation.id,p_accept:false});if(error)say(error.message);else location.reload()},true))}
-  else say('طلب الصداقة قيد الانتظار، حدّث الصفحة لمتابعة حالته');
+  else say(relationError?'تعذّر قراءة حالة الصداقة: '+relationError.message:'طلب الصداقة قيد الانتظار، حدّث الصفحة لمتابعة حالته');
  }else say('طلب الصداقة السابق مرفوض؛ لا يمكن إرسال طلب جديد حالياً');
 }
 async function openChat(action){
@@ -62,7 +62,7 @@ function initCoverUpload(uid){
     const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=500;
     const ctx=canvas.getContext('2d');if(!ctx)throw Error('المتصفح لا يدعم معالجة الصور');
     ctx.fillStyle='#34283f';ctx.fillRect(0,0,1200,500);
-    const scale=Math.min(1200/bitmap.width,500/bitmap.height);
+    const scale=Math.max(1200/bitmap.width,500/bitmap.height);
     const w=bitmap.width*scale,h=bitmap.height*scale;
     ctx.drawImage(bitmap,(1200-w)/2,(500-h)/2,w,h);
     blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('تعذّر تجهيز الغلاف')),'image/jpeg',.86));
@@ -78,5 +78,5 @@ function initCoverUpload(uid){
   }catch(e){say('تعذّر حفظ الغلاف: '+(e.message||'خطأ'));save.disabled=false}
  });
 }
-init();
+init().catch(e=>{document.getElementById('name').textContent='تعذّر تحميل الملف';say('خطأ في تحميل الملف: '+(e.message||'خطأ غير معروف'))});
 </script></body></html>
