@@ -41,7 +41,7 @@ pc.onicecandidate=e=>{if(e.candidate)signal(id,'ice',e.candidate.toJSON()).catch
 pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed')status('تعذّر الاتصال بأحد المشاركين. قد تحتاج الشبكة إلى TURN.');if(pc.connectionState==='connected')getWebRtcRoute(pc).then(route=>{peer.route=route;status('المكالمة متصلة • مسار '+route)})};
 if(me<id){peer.offered=true;const offer=await pc.createOffer();await pc.setLocalDescription(offer);await signal(id,'offer',{type:pc.localDescription.type,sdp:pc.localDescription.sdp})}}
 async function handleSignal(s){if(s.sender_id===me)return;const id=s.sender_id;if(!peers.has(id))await connect(id);const peer=peers.get(id);if(!peer)return;const pc=peer.pc;
-if(s.signal_type==='offer'){if(pc.signalingState!=='stable')return;await pc.setRemoteDescription(s.payload);const answer=await pc.createAnswer();await pc.setLocalDescription(answer);await signal(id,'answer',{type:pc.localDescription.type,sdp:pc.localDescription.sdp})}
+if(s.signal_type==='offer'){if(pc.signalingState!=='stable')throw Error('اتصال المشارك مشغول؛ ستتم إعادة المحاولة');await pc.setRemoteDescription(s.payload);const answer=await pc.createAnswer();await pc.setLocalDescription(answer);await signal(id,'answer',{type:pc.localDescription.type,sdp:pc.localDescription.sdp})}
 else if(s.signal_type==='answer'){if(pc.signalingState==='have-local-offer')await pc.setRemoteDescription(s.payload)}
 else if(s.signal_type==='ice'){if(pc.remoteDescription)await pc.addIceCandidate(s.payload).catch(()=>{});else peer.ice.push(s.payload)}
 if(pc.remoteDescription&&peer.ice.length){for(const ice of peer.ice.splice(0))await pc.addIceCandidate(ice).catch(()=>{})}}
