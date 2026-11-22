@@ -29,6 +29,48 @@ jobs:
       - name: Install Capacitor dependencies
         run: npm install --no-audit --no-fund
         working-directory: android-native
+      - name: Syntax-check application JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import subprocess
+          import tempfile
+
+          class Scripts(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.inline = []
+                  self.collect = False
+              def handle_starttag(self, tag, attrs):
+                  if tag == 'script':
+                      attributes = dict(attrs)
+                      self.collect = 'src' not in attributes and attributes.get('type', '').lower() != 'application/ld+json'
+              def handle_data(self, data):
+                  if self.collect:
+                      self.inline.append(data)
+              def handle_endtag(self, tag):
+                  if tag == 'script':
+                      self.collect = False
+
+          with tempfile.TemporaryDirectory() as tmp:
+              checked = 0
+              for page in sorted(Path('development').glob('*.html')):
+                  parser = Scripts()
+                  parser.feed(page.read_text(encoding='utf-8'))
+                  for i, script in enumerate(parser.inline):
+                      if not script.strip():
+                          continue
+                      candidate = Path(tmp) / f'{page.stem}-{i}.mjs'
+                      candidate.write_text(script, encoding='utf-8')
+                      subprocess.run(['node', '--check', str(candidate)], check=True)
+                      checked += 1
+              assert checked > 0, 'No inline application scripts found'
+              print(f'Syntax-checked {checked} inline scripts')
+          PY
+          node --check android-native/build-android.mjs
       - name: Generate Android project
         run: node build-android.mjs
         working-directory: android-native
