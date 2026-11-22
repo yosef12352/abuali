@@ -7,6 +7,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     permissions:
       contents: read
     steps:
@@ -19,12 +20,33 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
-      - run: npm install --no-audit --no-fund
+      - name: Install Capacitor dependencies
+        run: npm install --no-audit --no-fund
         working-directory: android-native
-      - run: node build-android.mjs
+      - name: Generate Android project
+        run: node build-android.mjs
         working-directory: android-native
-      - run: ./gradlew assembleDebug --no-daemon
+      - name: Verify native call plugin and permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s android-native/android/app/src/main/java/com/abualichat/audio/CallAudioPlugin.java
+          grep -q 'registerPlugin(CallAudioPlugin.class)' android-native/android/app/src/main/java/com/abualichat/app/MainActivity.java
+          for permission in INTERNET CAMERA RECORD_AUDIO MODIFY_AUDIO_SETTINGS WAKE_LOCK POST_NOTIFICATIONS; do
+            grep -q "android.permission.${permission}" android-native/android/app/src/main/AndroidManifest.xml
+          done
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
         working-directory: android-native/android
+      - name: Verify APK output
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=android-native/android/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$apk"
+          unzip -t "$apk" >/dev/null
+          sha256sum "$apk"
+          ls -lh "$apk"
       - uses: actions/upload-artifact@v4
         with:
           name: abu-ali-chat-debug-apk
