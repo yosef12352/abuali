@@ -1,4 +1,4 @@
-const CACHE='abu-ali-chat-royal-v3';
+const CACHE='abu-ali-chat-royal-v4';
 const ASSETS=['./index.html','./account.html','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('abu-ali-chat-')&&k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
@@ -17,7 +17,7 @@ self.addEventListener('notificationclick',event=>{
   const pages=await self.clients.matchAll({type:'window',includeUncontrolled:true});
   const existing=pages.find(client=>new URL(client.url).origin===self.location.origin);
   if(existing){await existing.focus();if(id)existing.postMessage({type:'OPEN_CHAT_FROM_NOTIFICATION',conversationId:id});return}
-  await self.clients.openWindow('./index.html');
+  await self.clients.openWindow(id&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id)?'./index.html?openChat='+encodeURIComponent(id):'./index.html');
  })());
 });
 
