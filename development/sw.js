@@ -1,4 +1,4 @@
-const CACHE='abu-ali-chat-royal-v2';
+const CACHE='abu-ali-chat-royal-v3';
 const ASSETS=['./index.html','./account.html','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('abu-ali-chat-')&&k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
@@ -19,4 +19,17 @@ self.addEventListener('notificationclick',event=>{
   if(existing){await existing.focus();if(id)existing.postMessage({type:'OPEN_CHAT_FROM_NOTIFICATION',conversationId:id});return}
   await self.clients.openWindow('./index.html');
  })());
+});
+
+self.addEventListener('push',event=>{
+ let payload={};
+ try{payload=event.data?.json()||{}}catch{payload={}}
+ const title='أبو علي شات';
+ const options={
+  body:typeof payload.body==='string'?payload.body.slice(0,160):'وصلتك رسالة جديدة',
+  icon:'./icon.svg',badge:'./icon.svg',
+  tag:typeof payload.tag==='string'?payload.tag.slice(0,120):'abu-ali-chat-message',
+  data:{conversationId:typeof payload.conversationId==='string'?payload.conversationId:null}
+ };
+ event.waitUntil(self.registration.showNotification(title,options));
 });
