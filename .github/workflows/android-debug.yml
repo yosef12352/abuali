@@ -14,14 +14,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: android-native/package-lock.json
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
-      - run: npm ci
+      - run: npm install --no-audit --no-fund
         working-directory: android-native
       - run: node build-android.mjs
         working-directory: android-native
