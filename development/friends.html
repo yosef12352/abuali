@@ -35,11 +35,8 @@ async function refreshProfiles(){
  const {data,error}=await db.rpc('chat_discover_people',{p_search:q,p_limit:50});
  if(error){setStatus('تعذّر تحميل المستخدمين: '+error.message);return}
  profiles=(data||[]).filter(p=>!blocked.has(p.id));
- const ids=[...new Set(relations.flatMap(r=>[r.requester_id,r.addressee_id]).filter(id=>id!==me&&!profiles.some(p=>p.id===id)))];
- if(ids.length){
-  const {data:known}=await db.rpc('chat_discover_people',{p_search:'',p_limit:50});
-  for(const p of known||[])if(ids.includes(p.id)&&!profiles.some(x=>x.id===p.id))profiles.push(p);
- }
+ const {data:friends,error:friendsError}=await db.rpc('chat_my_friend_profiles');
+ if(!friendsError)for(const p of friends||[])if(!blocked.has(p.id)&&!profiles.some(x=>x.id===p.id))profiles.push(p);
  await refreshPresence();render();
 }
 async function refreshPresence(){
@@ -81,7 +78,6 @@ document.getElementById('searchForm').addEventListener('submit',e=>{e.preventDef
 load();
 let heartbeatTimer=null,presenceTimer=null;
 function startPresence(){if(heartbeatTimer)return;const beat=()=>{if(!document.hidden&&me)db.rpc('chat_presence_heartbeat').then(()=>{})};beat();heartbeatTimer=setInterval(beat,45000);presenceTimer=setInterval(async()=>{if(!document.hidden&&me){await refreshPresence();render()}},30000)}
-const originalLoad=load;
 // Heartbeat starts only after authentication succeeds.
 const authWatcher=setInterval(()=>{if(me){clearInterval(authWatcher);startPresence()}},500);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&me){db.rpc('chat_presence_heartbeat').then(()=>{});refreshPresence().then(render)}});
