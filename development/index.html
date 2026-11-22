@@ -81,6 +81,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)sendPresen
 setInterval(sendPresence,45000);
 const {data:authData,error:authError}=await supabase.auth.getUser();if(!authData?.user){location.replace('./account.html');throw Error('Authentication required')}
 const currentUser=authData.user;
+// Mark this authenticated session as active immediately.
+sendPresence();
 function updateCallPeerChoices(){
  const select=document.getElementById('callPeerSelect');if(!select)return;
  const previous=select.value;select.replaceChildren();
