@@ -70,7 +70,7 @@ function card(p,r){
  else if(r.status==='pending'&&r.requester_id===me)actions.append(makeButton('إلغاء الطلب',()=>action('chat_cancel_friend_request',{p_id:r.id}),true));
  else if(r.status==='pending'){actions.append(makeButton('قبول',()=>action('chat_respond_friend_request',{p_id:r.id,p_accept:true})),makeButton('رفض',()=>action('chat_respond_friend_request',{p_id:r.id,p_accept:false}),true))}
  else if(r.status==='accepted')actions.append(makeButton('إزالة صداقة',()=>{if(confirm('متأكد بدك تلغي الصداقة؟'))action('chat_remove_friend',{p_other:p.id})},true));
- c.append(av,info,actions);return c;
+ av.title='عرض الملف الشخصي';av.style.cursor='pointer';av.addEventListener('click',()=>location.href='./profile.html?id='+encodeURIComponent(p.id));info.style.cursor='pointer';info.addEventListener('click',()=>location.href='./profile.html?id='+encodeURIComponent(p.id));c.append(av,info,actions);return c;
 }
 function render(){
  list.replaceChildren();
