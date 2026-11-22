@@ -87,6 +87,8 @@ function updateCallPeerChoices(){
 function friendlyCallError(error){
  const msg=error?.message||'خطأ غير معروف';
  if(msg.includes('Too many call attempts'))return 'أرسلت طلبات اتصال كثيرة خلال 10 دقائق. انتظر شوي وجرّب من جديد.';
+ if(msg.includes('Call signaling rate limit exceeded'))return 'تم إرسال إشارات اتصال كثيرة خلال دقيقة. أعد المحاولة لاحقاً.';
+ if(msg.includes('Invalid SDP signal')||msg.includes('Invalid ICE signal'))return 'بيانات الاتصال غير صالحة. أعد بدء المكالمة.';
  if(msg.includes('already in a call'))return 'أنت أو الطرف الثاني عنده مكالمة أو طلب اتصال نشط.';
  if(msg.includes('Call request expired'))return 'انتهت مهلة الرد على المكالمة.';
  return msg;
