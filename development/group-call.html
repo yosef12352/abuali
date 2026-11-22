@@ -24,7 +24,16 @@ function tile(id,name,local=false){let node=document.getElementById('tile-'+id);
 function showVideo(id,media,local=false){const node=tile(id,names.get(id)||'مشارك',local);let video=node.querySelector('video');if(!video){video=document.createElement('video');video.autoplay=true;video.playsInline=true;video.muted=local;node.prepend(video)}video.srcObject=media;const hasVideo=media.getVideoTracks().length>0;video.hidden=!hasVideo;const placeholder=node.querySelector('.placeholder');if(placeholder)placeholder.hidden=hasVideo;video.play().catch(()=>{if(!local){status('اضغط على الشاشة للسماح بتشغيل صوت المشاركين');document.body.addEventListener('click',()=>video.play().catch(()=>{}),{once:true})}})}
 function removePeer(id){const p=peers.get(id);if(p){p.pc.close();p.remote.getTracks().forEach(t=>t.stop());peers.delete(id)}document.getElementById('tile-'+id)?.remove()}
 async function signal(to,type,payload){const{error}=await db.rpc('chat_send_group_signal',{p_call_id:callId,p_recipient:to,p_type:type,p_payload:payload});if(error)throw error}
-async function connect(id){if(peers.has(id)||ended)return;const pc=new RTCPeerConnection({iceServers:await getCallIceServers(),iceCandidatePoolSize:4});const peer={pc,remote:new MediaStream(),ice:[],offered:false};peers.set(id,peer);for(const track of stream.getTracks())pc.addTrack(track,stream);
+async function connect(id){if(peers.has(id)||ended)return;const pc=new RTCPeerConnection({iceServers:await getCallIceServers(),iceCandidatePoolSize:4});const peer={pc,remote:new MediaStream(),ice:[],offered:false};peers.set(id,peer);for(const track of stream.getTracks()){
+  if(track.kind==='video'&&screenTrack?.readyState==='live'){
+    const sender=pc.addTrack(screenTrack,new MediaStream([screenTrack]));
+    sender._abualiScreenShare=true;
+  }else pc.addTrack(track,stream);
+}
+if(screenTrack?.readyState==='live'&&!stream.getVideoTracks().length){
+  const sender=pc.addTrack(screenTrack,new MediaStream([screenTrack]));
+  sender._abualiScreenShare=true;
+}
 pc.ontrack=e=>{if(!peer.remote.getTracks().some(t=>t.id===e.track.id))peer.remote.addTrack(e.track);showVideo(id,peer.remote)};
 pc.onicecandidate=e=>{if(e.candidate)signal(id,'ice',e.candidate.toJSON()).catch(err=>status('تعذّر إرسال بيانات الشبكة: '+err.message))};
 pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed')status('تعذّر الاتصال بأحد المشاركين. قد تحتاج الشبكة إلى TURN.');if(pc.connectionState==='connected')getWebRtcRoute(pc).then(route=>{peer.route=route;status('المكالمة متصلة • مسار '+route)})};
