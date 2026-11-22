@@ -12,7 +12,7 @@ language sql stable security definer set search_path='' as $$
  and not exists(select 1 from public.user_blocks b where
  (b.blocker_id=auth.uid() and b.blocked_id=p.id) or
  (b.blocker_id=p.id and b.blocked_id=auth.uid()))
- and (coalesce(trim(p_search),'')='' or p.display_name ilike '%'||replace(replace(replace(trim(p_search),'%','\\%'),'_','\\_'),'\\','\\\\')||'%' escape '\\')
+ and (coalesce(trim(p_search),'')='' or strpos(lower(coalesce(p.display_name,'')),lower(left(trim(p_search),60)))>0)
  order by (f.status='accepted') desc nulls last,p.created_at desc
  limit least(greatest(coalesce(p_limit,30),1),50)
 $$;
