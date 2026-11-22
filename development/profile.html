@@ -27,8 +27,8 @@ async function init(){
   const relation=!relationError&&(relations||[]).find(r=>r.requester_id===id||r.addressee_id===id);
   if(relation?.requester_id===user.id)$('actions').append(btn('إلغاء طلب الصداقة',async()=>{const{error}=await db.rpc('chat_cancel_friend_request',{p_id:relation.id});if(error)say(error.message);else location.reload()},true));
   else if(relation){$('actions').append(btn('قبول الصداقة',async()=>{const{error}=await db.rpc('chat_respond_friend_request',{p_id:relation.id,p_accept:true});if(error)say(error.message);else location.reload()}),btn('رفض',async()=>{const{error}=await db.rpc('chat_respond_friend_request',{p_id:relation.id,p_accept:false});if(error)say(error.message);else location.reload()},true))}
-  else $('actions').append(btn('طلب صداقة معلّق',()=>{},true));
- }else $('actions').append(btn('طلب صداقة مرفوض',()=>{},true));
+  else say('طلب الصداقة قيد الانتظار، حدّث الصفحة لمتابعة حالته');
+ }else say('طلب الصداقة السابق مرفوض؛ لا يمكن إرسال طلب جديد حالياً');
 }
 async function openChat(action){
  try{
@@ -46,16 +46,18 @@ function initCoverUpload(uid){
   const file=input.files?.[0];pending=null;save.disabled=true;
   if(preview){URL.revokeObjectURL(preview);preview=null}
   if(!file)return;
-  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>12*1024*1024){say('اختار صورة JPG أو PNG أو WebP أقل من 12 ميغابايت');return}
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||!file.size||file.size>12*1024*1024){say('اختار صورة JPG أو PNG أو WebP أقل من 12 ميغابايت');return}
   pending=file;preview=URL.createObjectURL(file);
-  const img=document.createElement('img');img.alt='معاينة الغلاف';img.src=preview;$('cover').replaceChildren(img);
+  const img=document.createElement('img');img.alt='معاينة الغلاف';img.src=preview;img.onerror=()=>{say('تعذّر فتح الصورة، اختار صورة ثانية');pending=null;save.disabled=true};$('cover').replaceChildren(img);
   save.disabled=false;say('راجع الغلاف، وبعدين اضغط حفظ');
  });
  save.addEventListener('click',async()=>{
   if(!pending)return;save.disabled=true;
   try{
    say('جارٍ تجهيز الغلاف...');
-   const bitmap=await createImageBitmap(pending);
+   let bitmap=null,tempUrl=null;
+   try{if(typeof createImageBitmap==='function')bitmap=await createImageBitmap(pending)}catch(e){}
+   if(!bitmap){tempUrl=URL.createObjectURL(pending);bitmap=await new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(Error('تعذّر قراءة صورة الغلاف'));image.src=tempUrl})}
    let blob;try{
     const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=500;
     const ctx=canvas.getContext('2d');if(!ctx)throw Error('المتصفح لا يدعم معالجة الصور');
@@ -64,12 +66,14 @@ function initCoverUpload(uid){
     const w=bitmap.width*scale,h=bitmap.height*scale;
     ctx.drawImage(bitmap,(1200-w)/2,(500-h)/2,w,h);
     blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('تعذّر تجهيز الغلاف')),'image/jpeg',.86));
-   }finally{bitmap.close()}
+   }finally{bitmap.close?.();if(tempUrl)URL.revokeObjectURL(tempUrl)}
    const path=uid+'/cover-'+crypto.randomUUID()+'.jpg';
    const{error:uploadError}=await db.storage.from('profile-avatars').upload(path,blob,{contentType:'image/jpeg',upsert:false});
    if(uploadError)throw uploadError;
    const{error:saveError}=await db.rpc('chat_save_my_cover',{p_cover_path:path});
    if(saveError){await db.storage.from('profile-avatars').remove([path]);throw saveError}
+   if(preview){URL.revokeObjectURL(preview);preview=null}
+   await showImage(path,$('cover'));
    say('✓ تم حفظ الغلاف بنجاح');pending=null;input.value='';
   }catch(e){say('تعذّر حفظ الغلاف: '+(e.message||'خطأ'));save.disabled=false}
  });
