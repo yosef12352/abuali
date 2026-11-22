@@ -34,4 +34,24 @@ xml=xml.replace(/(<application\b)([^>]*?)(>)/,(_match,open,attrs,close)=>{
   return open+cleaned+' android:icon=\"@mipmap/ic_launcher\" android:roundIcon=\"@mipmap/ic_launcher_round\"'+close;
 });
 writeFileSync(manifestPath,xml);
+// Firebase is optional for local debug builds, but required for native FCM delivery.
+// Provide google-services.json via CI secret or ANDROID_GOOGLE_SERVICES_JSON_BASE64.
+const firebaseBase64=process.env.ANDROID_GOOGLE_SERVICES_JSON_BASE64;
+const firebasePath=join(dir,'android/app/google-services.json');
+if(firebaseBase64){
+ const raw=Buffer.from(firebaseBase64,'base64').toString('utf8');
+ const config=JSON.parse(raw);
+ const matches=(config.client||[]).some(c=>c.client_info?.android_client_info?.package_name==='com.abualichat.app');
+ if(!matches)throw new Error('Firebase Android config does not match com.abualichat.app');
+ writeFileSync(firebasePath,raw);
+}
+if(existsSync(firebasePath)){
+ const gradle=join(dir,'android/app/build.gradle');
+ let source=readFileSync(gradle,'utf8');
+ if(!source.includes("com.google.gms.google-services")){
+  source+='\\napply plugin: \'com.google.gms.google-services\'\\n';
+  writeFileSync(gradle,source);
+ }
+ console.log('Firebase Google Services configured for Android build');
+}else console.log('Firebase config not provided: building APK without native FCM delivery');
 // The app is generated locally; debug APKs are for internal testing, not release signing.
