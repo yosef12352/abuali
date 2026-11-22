@@ -24,9 +24,9 @@ async function getCallIceServers(){const fallback=[{urls:['stun:stun.l.google.co
 
 function tile(id,name,local=false){let node=document.getElementById('tile-'+id);if(node)return node;node=document.createElement('div');node.className='tile '+(local?'local':'remote');node.id='tile-'+id;const icon=document.createElement('span');icon.className='placeholder';icon.textContent='👤';const caption=document.createElement('div');caption.className='name';caption.textContent=name+(local?' (أنت)':'');node.append(icon,caption);$('tiles').append(node);return node}
 function showVideo(id,media,local=false){const node=tile(id,names.get(id)||'مشارك',local);let video=node.querySelector('video');if(!video){video=document.createElement('video');video.autoplay=true;video.playsInline=true;video.muted=local;node.prepend(video)}video.srcObject=media;const hasVideo=media.getVideoTracks().length>0;video.classList.toggle('audio-only',!hasVideo);const placeholder=node.querySelector('.placeholder');if(placeholder)placeholder.hidden=hasVideo;video.play().catch(()=>{if(!local){status('اضغط على الشاشة للسماح بتشغيل صوت المشاركين');document.body.addEventListener('click',()=>video.play().catch(()=>{}),{once:true})}})}
-function removePeer(id){const p=peers.get(id);if(p){p.pc.close();p.remote.getTracks().forEach(t=>t.stop());peers.delete(id)}document.getElementById('tile-'+id)?.remove()}
+function removePeer(id){const p=peers.get(id);if(p){clearTimeout(p.retryTimer);p.pc.close();p.remote.getTracks().forEach(t=>t.stop());peers.delete(id)}document.getElementById('tile-'+id)?.remove()}
 async function signal(to,type,payload){const{error}=await db.rpc('chat_send_group_signal',{p_call_id:callId,p_recipient:to,p_type:type,p_payload:payload});if(error)throw error}
-async function connect(id){if(peers.has(id)||ended)return;const pc=new RTCPeerConnection({iceServers:await getCallIceServers(),iceCandidatePoolSize:4});const peer={pc,remote:new MediaStream(),ice:[],offered:false};peers.set(id,peer);for(const track of stream.getTracks()){
+async function connect(id){if(peers.has(id)||ended)return;const pc=new RTCPeerConnection({iceServers:await getCallIceServers(),iceCandidatePoolSize:4});const peer={pc,remote:new MediaStream(),ice:[],offered:false,retries:0,retryTimer:null};peers.set(id,peer);for(const track of stream.getTracks()){
   if(track.kind==='video'&&screenTrack?.readyState==='live'){
     const sender=pc.addTrack(screenTrack,new MediaStream([screenTrack]));
     sender._abualiScreenShare=true;
@@ -38,7 +38,30 @@ if(screenTrack?.readyState==='live'&&!stream.getVideoTracks().length){
 }
 pc.ontrack=e=>{if(!peer.remote.getTracks().some(t=>t.id===e.track.id))peer.remote.addTrack(e.track);showVideo(id,peer.remote)};
 pc.onicecandidate=e=>{if(e.candidate)signal(id,'ice',e.candidate.toJSON()).catch(err=>status('تعذّر إرسال بيانات الشبكة: '+err.message))};
-pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed')status('تعذّر الاتصال بأحد المشاركين. قد تحتاج الشبكة إلى TURN.');if(pc.connectionState==='connected')getWebRtcRoute(pc).then(route=>{peer.route=route;status('المكالمة متصلة • مسار '+route)})};
+pc.onconnectionstatechange=()=>{
+ if(pc.connectionState==='connected'){
+  clearTimeout(peer.retryTimer);peer.retryTimer=null;peer.retries=0;
+  getWebRtcRoute(pc).then(route=>{if(!ended&&peers.get(id)===peer){peer.route=route;status('المكالمة متصلة • مسار '+route)}});
+ }
+ if(pc.connectionState==='failed'||pc.connectionState==='disconnected'){
+  if(ended||peers.get(id)!==peer||peer.retryTimer)return;
+  if(me>=id){status('انقطع اتصال مشارك؛ بانتظار إعادة الاتصال من الطرف الآخر');return}
+  if(peer.retries>=3){status('تعذّر استعادة الاتصال؛ جرّب مغادرة المكالمة والانضمام مجدداً');return}
+  peer.retryTimer=setTimeout(async()=>{
+   peer.retryTimer=null;
+   if(ended||peers.get(id)!==peer||pc.signalingState==='closed'||pc.connectionState==='connected')return;
+   if(pc.signalingState!=='stable')return;
+   peer.retries++;
+   try{
+    pc.restartIce();
+    const offer=await pc.createOffer({iceRestart:true});
+    await pc.setLocalDescription(offer);
+    await signal(id,'offer',{type:pc.localDescription.type,sdp:pc.localDescription.sdp});
+    status('عم نعيد الاتصال بالمشارك • محاولة '+peer.retries+' من 3');
+   }catch(e){status('فشلت محاولة إعادة الاتصال: '+e.message)}
+  },pc.connectionState==='disconnected'?5000:1500);
+ }
+};
 if(me<id){peer.offered=true;const offer=await pc.createOffer();await pc.setLocalDescription(offer);await signal(id,'offer',{type:pc.localDescription.type,sdp:pc.localDescription.sdp})}}
 async function handleSignal(s){if(s.sender_id===me)return;const id=s.sender_id;if(!peers.has(id))await connect(id);const peer=peers.get(id);if(!peer)return;const pc=peer.pc;
 if(s.signal_type==='offer'){if(pc.signalingState!=='stable')throw Error('اتصال المشارك مشغول؛ ستتم إعادة المحاولة');await pc.setRemoteDescription(s.payload);const answer=await pc.createAnswer();await pc.setLocalDescription(answer);await signal(id,'answer',{type:pc.localDescription.type,sdp:pc.localDescription.sdp})}
