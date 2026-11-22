@@ -560,6 +560,11 @@ pushEnable.addEventListener('click',async()=>{
  }catch(error){pushStatus.textContent='فشل الاشتراك: '+(error.message||'خطأ')}finally{await refreshPushStatus()}
 });
 async function clearThisDevicePushForLogout(){
+ if(isNativeAndroidPush()){
+  const {error}=await supabase.from('chat_android_push_tokens').delete().eq('user_id',currentUser.id);
+  if(error)throw error;
+  return;
+ }
  if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
  const registration=await navigator.serviceWorker.ready;
  const subscription=await registration.pushManager.getSubscription();
