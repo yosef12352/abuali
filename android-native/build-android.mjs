@@ -16,6 +16,11 @@ if(!logoMatch)throw new Error('Original logo JPEG not found in development/icon.
 const drawableDir=join(dir,'android/app/src/main/res/drawable-nodpi');
 mkdirSync(drawableDir,{recursive:true});
 writeFileSync(join(drawableDir,'abuali_original_logo.jpg'),Buffer.from(logoMatch[1],'base64'));
+// Adaptive launcher icons for Android 8+, with the original artwork preserved.
+const adaptiveDir=join(dir,'android/app/src/main/res/mipmap-anydpi-v26');mkdirSync(adaptiveDir,{recursive:true});
+const iconXml='<?xml version="1.0" encoding="utf-8"?>\\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\\n<background android:drawable="@android:color/black"/>\\n<foreground android:drawable="@drawable/abuali_original_logo"/>\\n</adaptive-icon>\\n';
+writeFileSync(join(adaptiveDir,'ic_launcher.xml'),iconXml);
+writeFileSync(join(adaptiveDir,'ic_launcher_round.xml'),iconXml);
 const manifestPath=join(dir,'android/app/src/main/AndroidManifest.xml');let xml=readFileSync(manifestPath,'utf8');
 for(const p of ['android.permission.INTERNET','android.permission.CAMERA','android.permission.RECORD_AUDIO','android.permission.MODIFY_AUDIO_SETTINGS','android.permission.WAKE_LOCK','android.permission.POST_NOTIFICATIONS'])if(!xml.includes(p))xml=xml.replace('<application',`<uses-permission android:name="${p}" />
     <application`);
