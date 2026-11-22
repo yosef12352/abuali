@@ -107,7 +107,7 @@ function showOutgoingCall(id,type,peer){
  document.getElementById('outgoingCallPeer').textContent='بانتظار رد '+peer;
  document.getElementById('outgoingCallBanner').hidden=false;
  let busy=false;
- outgoingCallTimer=setInterval(async()=>{if(busy||outgoingCallId!==id||document.visibilityState!=='visible')return;busy=true;try{const {data,error}=await supabase.from('chat_calls').select('status').eq('id',id).single();if(!error&&data?.status!=='ringing'){hideOutgoingCall();if(data.status!=='accepted')document.getElementById('callRequestStatus').textContent='انتهى طلب الاتصال: '+({missed:'فائتة',declined:'مرفوضة',cancelled:'ملغاة',ended:'منتهية'}[data.status]||data.status)}}finally{busy=false}},2500);
+ outgoingCallTimer=setInterval(async()=>{if(busy||outgoingCallId!==id||document.visibilityState!=='visible')return;busy=true;try{await supabase.rpc('expire_my_chat_calls');if(outgoingCallId!==id)return;const {data,error}=await supabase.from('chat_calls').select('status').eq('id',id).single();if(!error&&data?.status!=='ringing'){hideOutgoingCall();if(data.status!=='accepted')document.getElementById('callRequestStatus').textContent='انتهى طلب الاتصال: '+({missed:'فائتة',declined:'مرفوضة',cancelled:'ملغاة',ended:'منتهية'}[data.status]||data.status)}}finally{busy=false}},2500);
 }
 document.getElementById('cancelOutgoingCall').addEventListener('click',async()=>{const id=outgoingCallId;if(!id)return;const btn=document.getElementById('cancelOutgoingCall');btn.disabled=true;try{const {error}=await supabase.rpc('respond_chat_call',{p_call_id:id,p_action:'cancel'});if(error)throw error;hideOutgoingCall();document.getElementById('callRequestStatus').textContent='تم إلغاء الاتصال'}catch(error){document.getElementById('callRequestStatus').textContent='تعذّر الإلغاء: '+error.message}finally{btn.disabled=false}});
 async function requestConversationCall(type){
@@ -148,6 +148,7 @@ function closeWebCall(){
  document.getElementById('liveEnableSound').hidden=true;
  document.getElementById('liveMuteCall').textContent='كتم الميكروفون';
  document.getElementById('liveCameraToggle').textContent='إيقاف الكاميرا';
+ document.getElementById('liveCameraToggle').hidden=false;
  for(const id of ['liveLocalVideo','liveRemoteVideo','liveRemoteAudio']){const el=document.getElementById(id);el.pause();el.srcObject=null;el.hidden=id!=='liveRemoteAudio'}
  callPanel.hidden=true;
 }
@@ -190,6 +191,9 @@ async function beginWebCall(record){
   pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
   const call={id:record.id,stream,pc,cursor:0,reading:false,pendingIce:[],offerHandled:false,remoteStream:new MediaStream(),remoteTracks:new Set(),connectedAt:null};
   activeWebCall=call;callPanel.hidden=false;
+  document.getElementById('liveCameraToggle').hidden=record.call_type!=='video';
+  document.getElementById('liveMuteCall').textContent='كتم الميكروفون';
+  document.getElementById('liveCameraToggle').textContent='إيقاف الكاميرا';
   document.getElementById('liveCallHeading').textContent=record.call_type==='video'?'📹 مكالمة فيديو':'📞 مكالمة صوتية';
   callState.textContent='جارٍ ربط الاتصال...';
   for(const track of stream.getTracks())pc.addTrack(track,stream);
@@ -198,7 +202,7 @@ async function beginWebCall(record){
   pc.onconnectionstatechange=()=>{if(activeWebCall!==call)return;if(pc.connectionState==='connected'&&!call.connectedAt){call.connectedAt=Date.now();callDurationTimer=setInterval(()=>{if(activeWebCall!==call)return;const seconds=Math.floor((Date.now()-call.connectedAt)/1000);callState.textContent='المكالمة متصلة • '+String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')},1000)}callState.textContent=({connected:'المكالمة متصلة',connecting:'جارٍ الاتصال...',disconnected:'الاتصال انقطع مؤقتاً',failed:'فشل الاتصال المباشر، قد تحتاج الشبكة إلى خادم TURN'})[pc.connectionState]||'حالة الاتصال: '+pc.connectionState};
   pc.onicecandidate=event=>{if(event.candidate&&activeWebCall===call)sendWebSignal(call,'ice',event.candidate.toJSON()).catch(()=>{callState.textContent='تعذّر إرسال بيانات الاتصال'})};
   callSignalTimer=setInterval(readWebSignals,1100);
-  pc.oniceconnectionstatechange=()=>{if(activeWebCall!==call)return;if(pc.iceConnectionState==='failed'){callState.textContent='عم نحاول نعيد الاتصال...';try{pc.restartIce()}catch{};if(callRetryTimer)clearTimeout(callRetryTimer);callRetryTimer=setTimeout(()=>{if(activeWebCall===call&&pc.connectionState==='failed')callState.textContent='فشل الاتصال. جرّب شبكة تانية أو خادم TURN.'},12000)}};
+  pc.oniceconnectionstatechange=()=>{if(activeWebCall!==call)return;if(pc.iceConnectionState==='failed'){callState.textContent='فشل الاتصال المباشر. يمكن إنهاء المكالمة والمحاولة على شبكة مختلفة أو بعد تجهيز TURN.';if(callRetryTimer)clearTimeout(callRetryTimer);callRetryTimer=setTimeout(()=>{if(activeWebCall===call&&pc.iceConnectionState==='failed')callState.textContent='الاتصال غير متاح على هالشبكة حالياً. اضغط إنهاء المكالمة.'},12000)}};
   callStatusTimer=setInterval(async()=>{if(activeWebCall!==call)return;const {data}=await supabase.from('chat_calls').select('status').eq('id',call.id).maybeSingle();if(data&&data.status!=='accepted'){closeWebCall();await loadCallHistory()}},3500);
   if(record.caller_id===currentUser.id){const offer=await pc.createOffer();await pc.setLocalDescription(offer);await sendWebSignal(call,'offer',{type:pc.localDescription.type,sdp:pc.localDescription.sdp})}
   await readWebSignals();
