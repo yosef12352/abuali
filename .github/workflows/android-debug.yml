@@ -125,6 +125,20 @@ jobs:
               assert root.find('foreground').get(android + 'drawable') == '@drawable/abuali_original_logo'
           print('Original Android launcher icons and manifest verified')
           PY
+      - name: Verify native audio routing and proximity integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          plugin=android-native/android/app/src/main/java/com/abualichat/audio/CallAudioPlugin.java
+          main=android-native/android/app/src/main/java/com/abualichat/app/MainActivity.java
+          test -s "$plugin"
+          grep -q 'registerPlugin(CallAudioPlugin.class)' "$main"
+          grep -q 'AudioManager.MODE_IN_COMMUNICATION' "$plugin"
+          grep -q 'setCommunicationDevice' "$plugin"
+          grep -q 'isWakeLockLevelSupported' "$plugin"
+          grep -q 'proximityLock.release()' "$plugin"
+          grep -q 'handleOnDestroy' "$plugin"
+          echo 'Native call audio and proximity integration verified statically'
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon
         working-directory: android-native/android
