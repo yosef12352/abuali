@@ -18,9 +18,19 @@ async function init(){
  if(id===user.id){$('actions').append(btn('تعديل ملفي',()=>location.href='./index.html#settings'));$('coverEditor').hidden=false;initCoverUpload(user.id);return}
  const{data:presence}=await db.rpc('chat_get_presence',{p_users:[id]});
  if(presence?.length){const online=presence[0].is_online;$('avatar').classList.add(online?'online':'offline');$('presence').className='presence '+(online?'online':'offline');$('presence').textContent=online?'● متصل الآن':'● غير متصل'}
- if(p.is_friend){$('actions').append(btn('مراسلة',()=>location.href='./index.html'),btn('اتصال صوتي',()=>location.href='./index.html',true),btn('اتصال فيديو',()=>location.href='./index.html',true))}
+ if(p.is_friend){$('actions').append(btn('مراسلة',()=>openChat('chat')),btn('اتصال صوتي',()=>openChat('audio'),true),btn('اتصال فيديو',()=>openChat('video'),true))}
  else if(!p.friendship_status)$('actions').append(btn('إرسال طلب صداقة',async()=>{const{error}=await db.rpc('chat_send_friend_request',{p_other:id});say(error?error.message:'تم إرسال طلب الصداقة');if(!error)$('actions').replaceChildren()}));
  else $('actions').append(btn(p.friendship_status==='pending'?'طلب صداقة معلّق':'طلب صداقة مرفوض',()=>{},true));
+}
+async function openChat(action){
+ try{
+  say('جارٍ فتح المحادثة...');
+  const{data,error}=await db.rpc('create_direct_conversation',{p_other_user_id:id});
+  if(error)throw error;
+  const conversationId=typeof data==='string'?data:(data?.id||data?.conversation_id);
+  if(!conversationId)throw Error('تعذّر تحديد المحادثة');
+  location.href='./index.html?conversation='+encodeURIComponent(conversationId)+'&action='+encodeURIComponent(action);
+ }catch(e){say('تعذّر فتح المحادثة: '+(e.message||'خطأ غير معروف'))}
 }
 function initCoverUpload(uid){
  const input=$('coverFile'),save=$('saveCover');let pending=null,preview=null;
