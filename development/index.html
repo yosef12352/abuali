@@ -170,8 +170,9 @@ document.getElementById('liveMuteCall').addEventListener('click',()=>{if(!active
 document.getElementById('liveCameraToggle').addEventListener('click',()=>{if(!activeWebCall)return;const track=activeWebCall.stream.getVideoTracks()[0];if(track){track.enabled=!track.enabled;document.getElementById('liveCameraToggle').textContent=track.enabled?'إيقاف الكاميرا':'تشغيل الكاميرا'}});
 window.addEventListener('pagehide',()=>{if(activeWebCall)closeWebCall()});
 async function respondCall(id,action){
- const {error}=await supabase.rpc('respond_chat_call',{p_call_id:id,p_action:action});
+ const {data:result,error}=await supabase.rpc('respond_chat_call',{p_call_id:id,p_action:action});
  if(error)document.getElementById('callRequestStatus').textContent='تعذّر تحديث الطلب: '+error.message;
+ else if(result==='missed')document.getElementById('callRequestStatus').textContent='انتهت مهلة الرد على طلب الاتصال.';
  else if(action==='accept'){const {data}=await supabase.from('chat_calls').select('id,caller_id,call_type').eq('id',id).single();if(data)await beginWebCall(data)}
  else if(action==='end'&&activeWebCall?.id===id)closeWebCall();
  await loadCallHistory();
