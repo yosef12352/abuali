@@ -84,6 +84,13 @@ function updateCallPeerChoices(){
  for(const chat of chatDirectory||[]){if(!chat.peer_id||!chat.conversation_id)continue;const option=document.createElement('option');option.value=chat.conversation_id;option.textContent=chat.peer_name||'مستخدم';select.append(option)}
  if([...select.options].some(o=>o.value===previous))select.value=previous;
 }
+function friendlyCallError(error){
+ const msg=error?.message||'خطأ غير معروف';
+ if(msg.includes('Too many call attempts'))return 'أرسلت طلبات اتصال كثيرة خلال 10 دقائق. انتظر شوي وجرّب من جديد.';
+ if(msg.includes('already in a call'))return 'أنت أو الطرف الثاني عنده مكالمة أو طلب اتصال نشط.';
+ if(msg.includes('Call request expired'))return 'انتهت مهلة الرد على المكالمة.';
+ return msg;
+}
 let requestingCall=false;
 async function requestCall(type){
  if(requestingCall)return;
@@ -95,7 +102,7 @@ async function requestCall(type){
  try{
   status.textContent='جارٍ إرسال طلب الاتصال...';
   const {error}=await supabase.rpc('create_chat_call',{p_conversation_id:id,p_callee_id:peer.peer_id,p_call_type:type});
-  status.textContent=error?'تعذّر إنشاء الطلب: '+error.message:'تم إرسال طلب الاتصال. رح تبدأ محاولة الاتصال المباشر بعد قبول الطرف الثاني.';
+  status.textContent=error?'تعذّر إنشاء الطلب: '+friendlyCallError(error):'تم إرسال طلب الاتصال. رح تبدأ محاولة الاتصال المباشر بعد قبول الطرف الثاني.';
   if(!error)await loadCallHistory();
  }finally{requestingCall=false;document.getElementById('requestAudioCall').disabled=false;document.getElementById('requestVideoCall').disabled=false}
 }
@@ -120,7 +127,7 @@ async function requestConversationCall(type){
  try{
   const {data:callId,error}=await supabase.rpc('create_chat_call',{p_conversation_id:id,p_callee_id:peer.peer_id,p_call_type:type});
   if(!error&&callId)showOutgoingCall(callId,type,peer.peer_name||'المستخدم');
-  const message=error?'تعذّر الاتصال: '+error.message:(type==='video'?'📹 تم إرسال طلب مكالمة فيديو':'📞 تم إرسال طلب مكالمة صوتية');
+  const message=error?'تعذّر الاتصال: '+friendlyCallError(error):(type==='video'?'📹 تم إرسال طلب مكالمة فيديو':'📞 تم إرسال طلب مكالمة صوتية');
   document.getElementById('callRequestStatus').textContent=message;
   const toast=document.createElement('div');toast.textContent=message;toast.setAttribute('role','status');toast.style.cssText='position:fixed;z-index:10030;bottom:calc(92px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);max-width:90vw;background:#23152f;color:#f7e2b2;border:1px solid #caa65d;border-radius:14px;padding:12px 17px;box-shadow:0 12px 35px #0008;text-align:center;font-size:13px';document.body.append(toast);setTimeout(()=>toast.remove(),2800);
  }catch(error){document.getElementById('callRequestStatus').textContent='تعذّر بدء الطلب: '+(error.message||'خطأ')}
@@ -216,7 +223,7 @@ document.getElementById('liveCameraToggle').addEventListener('click',()=>{if(!ac
 window.addEventListener('pagehide',()=>{if(activeWebCall){const id=activeWebCall.id;closeWebCall();supabase.rpc('respond_chat_call',{p_call_id:id,p_action:'end'}).catch(()=>{})}});
 async function respondCall(id,action){
  const {data:result,error}=await supabase.rpc('respond_chat_call',{p_call_id:id,p_action:action});
- if(error)document.getElementById('callRequestStatus').textContent='تعذّر تحديث الطلب: '+error.message;
+ if(error)document.getElementById('callRequestStatus').textContent='تعذّر تحديث الطلب: '+friendlyCallError(error);
  else if(result==='missed')document.getElementById('callRequestStatus').textContent='انتهت مهلة الرد على طلب الاتصال.';
  else if(action==='accept'){const {data}=await supabase.from('chat_calls').select('id,caller_id,call_type').eq('id',id).single();if(data)await beginWebCall(data)}
  else if(action==='end'&&activeWebCall?.id===id)closeWebCall();
