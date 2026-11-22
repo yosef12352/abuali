@@ -205,6 +205,13 @@ async function loadConversations(){
 }
 searchForm.addEventListener('submit',async e=>{e.preventDefault();searchOutput.textContent='عم نبحث...';const username=document.getElementById('findUsername').value.trim();if(!username){searchOutput.textContent='اكتب اسم المستخدم';return}const {data,error}=await supabase.rpc('find_user_by_username',{p_username:username});searchOutput.replaceChildren();if(error){searchOutput.textContent='تعذّر البحث: '+error.message;return}if(!data?.length){searchOutput.textContent='ما لقينا مستخدم بهالاسم';return}const u=data[0],line=document.createElement('div'),name=document.createElement('strong'),btn=document.createElement('button');line.className='contact';name.textContent=u.display_name+' (@'+u.username+')';btn.textContent='بدء محادثة';btn.type='button';btn.addEventListener('click',async()=>{btn.disabled=true;const {data:id,error:err}=await supabase.rpc('create_direct_conversation',{other_user_id:u.user_id});searchOutput.textContent=err?'تعذّر بدء المحادثة: '+err.message:'تم إنشاء المحادثة '+String(id).slice(0,8)+'. يمكنك فتح المحادثة وإرسال رسالة.';await loadConversations();if(!err)await openConversation(id)});line.append(name,btn);searchOutput.append(line)});
 await loadConversations();
+try{
+ const url=new URL(location.href),chatId=url.searchParams.get('openChat');
+ if(chatId){
+  url.searchParams.delete('openChat');history.replaceState(null,'',url.pathname+url.search+url.hash);
+  if(/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(chatId)&&chatDirectory.some(c=>c.conversation_id===chatId))await openConversation(chatId);
+ }
+}catch(error){console.warn('تعذّر فتح المحادثة من التنبيه',error)}
 document.addEventListener('abuAliConnectionRestored',()=>{if(activeConversation&&document.getElementById('chats').classList.contains('in-conversation')){refreshActiveChat(activeConversation);refreshAttachments(activeConversation)}else loadConversations()});
 setInterval(()=>{const chats=document.getElementById('chats');if(document.visibilityState==='visible'&&chats&&!chats.hidden&&!chats.classList.contains('in-conversation'))loadConversations()},20000);
 document.addEventListener('visibilitychange',()=>{const chats=document.getElementById('chats');if(document.visibilityState==='visible'&&chats&&!chats.hidden&&!chats.classList.contains('in-conversation'))loadConversations()});
