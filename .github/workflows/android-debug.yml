@@ -128,6 +128,18 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon
         working-directory: android-native/android
+      - name: Verify APK package and installable metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=android-native/android/app/build/outputs/apk/debug/app-debug.apk
+          aapt="$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -type f -name aapt | sort -V | tail -n 1)"
+          test -x "$aapt"
+          "$aapt" dump badging "$apk" | tee /tmp/abuali-apk-badging.txt
+          grep -q "package: name='com.abualichat.app'" /tmp/abuali-apk-badging.txt
+          grep -q 'sdkVersion:' /tmp/abuali-apk-badging.txt
+          grep -q 'application-label:' /tmp/abuali-apk-badging.txt
+          echo 'Android package identity and APK metadata verified'
       - name: Verify APK output
         shell: bash
         run: |
