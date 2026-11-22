@@ -1,0 +1,21 @@
+/* Abu Ali Chat | premium layered UI, progressive enhancement for WebView/PWA */
+:root{--royal-glass:rgba(255,255,255,.78);--royal-border:rgba(255,255,255,.54);--royal-shadow:0 20px 55px rgba(10,43,37,.14),0 3px 12px rgba(10,43,37,.08);--royal-accent:#14a886}
+html{scroll-behavior:smooth;-webkit-tap-highlight-color:transparent}
+body{min-height:100dvh;text-rendering:optimizeLegibility}
+button,a,input,textarea,select{touch-action:manipulation}
+button,a{transition:transform .18s ease,box-shadow .22s ease,filter .22s ease}
+button:active{transform:translateY(1px) scale(.985)}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #39caa9;outline-offset:3px}
+@supports(backdrop-filter:blur(12px)){
+  main{backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+}
+main{isolation:isolate;box-shadow:var(--royal-shadow);border:1px solid var(--royal-border)}
+.msg{box-shadow:0 6px 20px rgba(8,60,49,.07),inset 0 1px rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.5)}
+@media(hover:hover) and (pointer:fine){
+  button:hover{filter:brightness(1.065);box-shadow:0 5px 18px rgba(0,0,0,.12)}
+}
+@media(max-width:700px){main{border-inline:0;border-radius:0;box-shadow:none}}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}
+}
+@media(prefers-contrast:more){main,.msg{border:2px solid currentColor}button:focus-visible,a:focus-visible{outline-width:4px}}
