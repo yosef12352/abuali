@@ -1,5 +1,5 @@
-const CACHE='abu-ali-chat-royal-v11';
-const ASSETS=['./index.html','./account.html','./friends.html','./profile.html','./group-call.html','./manifest.webmanifest','./brand-logo.svg','./premium-ui.css','./brand-logo.svg'];
+const CACHE='abu-ali-chat-royal-v12';
+const ASSETS=['./index.html','./account.html','./friends.html','./profile.html','./group-call.html','./manifest.webmanifest','./brand-logo.svg','./royal-shell.css','./premium-ui.css','./brand-logo.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('abu-ali-chat-')&&k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
 self.addEventListener('fetch',event=>{
