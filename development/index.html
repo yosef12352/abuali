@@ -129,7 +129,21 @@ messageSearchInput.addEventListener('input',()=>{
   }catch(err){if(sequence===messageSearchSequence)messageSearchResults.textContent='تعذّر البحث في الرسائل. جرّب مرة ثانية.'}
  },350);
 });
-async function loadConversations(){const {data,error}=await supabase.rpc('list_my_direct_chats');if(error){convOutput.textContent='تعذّر تحميل المحادثات: '+error.message;return}chatDirectory=data||[];if(currentUser?.id&&chatDirectory.length){const {data:prefs,error:prefError}=await supabase.from('conversation_members').select('conversation_id,archived_at,pinned_at,muted_until').eq('user_id',currentUser.id);if(!prefError){const byId=Object.fromEntries((prefs||[]).map(p=>[p.conversation_id,p]));chatDirectory=chatDirectory.map(c=>({...c,...byId[c.conversation_id]}))}}paintChatDirectory()}
+let inboxLoadSequence=0;
+function updateUnreadTitle(){const count=chatDirectory.reduce((sum,c)=>sum+Math.max(0,Number(c.unread_count)||0),0);document.title=(count?'('+Math.min(count,999)+(count>999?'+':'')+') ':'')+'أبو علي شات'}
+async function loadConversations(){
+ const sequence=++inboxLoadSequence;
+ const {data,error}=await supabase.rpc('list_my_direct_chats');
+ if(sequence!==inboxLoadSequence)return;
+ if(error){if(!chatDirectory.length)convOutput.textContent='تعذّر تحميل المحادثات: '+error.message;return}
+ let next=data||[];
+ if(currentUser?.id&&next.length){
+  const {data:prefs,error:prefError}=await supabase.from('conversation_members').select('conversation_id,archived_at,pinned_at,muted_until').eq('user_id',currentUser.id);
+  if(sequence!==inboxLoadSequence)return;
+  if(!prefError){const byId=Object.fromEntries((prefs||[]).map(p=>[p.conversation_id,p]));next=next.map(c=>({...c,...byId[c.conversation_id]}))}
+ }
+ chatDirectory=next;updateUnreadTitle();paintChatDirectory()
+}
 searchForm.addEventListener('submit',async e=>{e.preventDefault();searchOutput.textContent='عم نبحث...';const username=document.getElementById('findUsername').value.trim();if(!username){searchOutput.textContent='اكتب اسم المستخدم';return}const {data,error}=await supabase.rpc('find_user_by_username',{p_username:username});searchOutput.replaceChildren();if(error){searchOutput.textContent='تعذّر البحث: '+error.message;return}if(!data?.length){searchOutput.textContent='ما لقينا مستخدم بهالاسم';return}const u=data[0],line=document.createElement('div'),name=document.createElement('strong'),btn=document.createElement('button');line.className='contact';name.textContent=u.display_name+' (@'+u.username+')';btn.textContent='بدء محادثة';btn.type='button';btn.addEventListener('click',async()=>{btn.disabled=true;const {data:id,error:err}=await supabase.rpc('create_direct_conversation',{other_user_id:u.user_id});searchOutput.textContent=err?'تعذّر بدء المحادثة: '+err.message:'تم إنشاء المحادثة '+String(id).slice(0,8)+'. يمكنك فتح المحادثة وإرسال رسالة.';await loadConversations();if(!err)await openConversation(id)});line.append(name,btn);searchOutput.append(line)});
 await loadConversations();
 document.addEventListener('abuAliConnectionRestored',()=>{if(activeConversation&&document.getElementById('chats').classList.contains('in-conversation')){refreshActiveChat(activeConversation);refreshAttachments(activeConversation)}else loadConversations()});
