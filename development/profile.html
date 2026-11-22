@@ -21,7 +21,7 @@ async function init(){
  const{data:presence}=await db.rpc('chat_get_presence',{p_users:[id]});
  if(presence?.length){const online=presence[0].is_online;$('avatar').classList.add(online?'online':'offline');$('presence').className='presence '+(online?'online':'offline');$('presence').textContent=online?'● متصل الآن':'● غير متصل'}
  if(p.is_friend){$('actions').append(btn('مراسلة',()=>openChat('chat')),btn('اتصال صوتي',()=>openChat('audio'),true),btn('اتصال فيديو',()=>openChat('video'),true))}
- else if(!p.friendship_status)$('actions').append(btn('إرسال طلب صداقة',async()=>{const{error}=await db.rpc('chat_send_friend_request',{p_other:id});say(error?error.message:'تم إرسال طلب الصداقة');if(!error)$('actions').replaceChildren()}));
+ else if(!p.friendship_status)$('actions').append(btn('إرسال طلب صداقة',async()=>{const{error}=await db.rpc('chat_send_friend_request',{p_other:id});say(error?error.message:'تم إرسال طلب الصداقة');if(!error){$('actions').replaceChildren();$('actions').append(btn('تم إرسال الطلب',()=>{},true));$('actions').firstElementChild.disabled=true}}));
  else if(p.friendship_status==='pending'){
   const{data:relations,error:relationError}=await db.from('chat_friendships').select('id,requester_id,addressee_id,status').eq('status','pending').or('requester_id.eq.'+user.id+',addressee_id.eq.'+user.id);
   const relation=!relationError&&(relations||[]).find(r=>r.requester_id===id||r.addressee_id===id);
@@ -73,8 +73,8 @@ function initCoverUpload(uid){
    const{error:saveError}=await db.rpc('chat_save_my_cover',{p_cover_path:path});
    if(saveError){await db.storage.from('profile-avatars').remove([path]);throw saveError}
    if(preview){URL.revokeObjectURL(preview);preview=null}
-   await showImage(path,$('cover'));
-   say('✓ تم حفظ الغلاف بنجاح');pending=null;input.value='';
+   pending=null;input.value='';
+   try{await showImage(path,$('cover'));say('✓ تم حفظ الغلاف بنجاح')}catch(previewError){say('تم حفظ الغلاف، لكن المعاينة غير متاحة حالياً')};
   }catch(e){say('تعذّر حفظ الغلاف: '+(e.message||'خطأ'));save.disabled=false}
  });
 }
