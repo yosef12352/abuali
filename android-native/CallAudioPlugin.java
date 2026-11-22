@@ -25,10 +25,10 @@ public class CallAudioPlugin extends Plugin {
     try {
       if(audio==null)throw new IllegalStateException("AudioManager unavailable");
       audio.setMode(AudioManager.MODE_IN_COMMUNICATION);
-      route(false);
+      boolean earpiece=route(false);
       active=true;
-      updateProximity(true);
-      JSObject result=new JSObject();result.put("earpiece",true);call.resolve(result);
+      updateProximity(earpiece);
+      JSObject result=new JSObject();result.put("earpiece",earpiece);call.resolve(result);
     } catch(Exception e){
       resetAudio();
       call.reject("تعذّر تفعيل سماعة المكالمات",e);
@@ -39,9 +39,9 @@ public class CallAudioPlugin extends Plugin {
     if(!active){call.reject("ما في مكالمة نشطة");return;}
     boolean speaker=call.getBoolean("enabled",false);
     try {
-      route(speaker);
-      updateProximity(!speaker);
-      JSObject result=new JSObject();result.put("speaker",speaker);call.resolve(result);
+      boolean earpiece=route(speaker);
+      updateProximity(earpiece);
+      JSObject result=new JSObject();result.put("speaker",!earpiece);call.resolve(result);
     } catch(Exception e){call.reject("تعذّر تغيير مخرج الصوت",e);}
   }
 
@@ -62,18 +62,22 @@ public class CallAudioPlugin extends Plugin {
     active=false;
   }
 
-  private void route(boolean speaker) {
+  private boolean route(boolean speaker) {
     if(Build.VERSION.SDK_INT>=31){
-      int type=speaker?AudioDeviceInfo.TYPE_BUILTIN_SPEAKER:AudioDeviceInfo.TYPE_BUILTIN_EARPIECE;
+      int preferred=speaker?AudioDeviceInfo.TYPE_BUILTIN_SPEAKER:AudioDeviceInfo.TYPE_BUILTIN_EARPIECE;
+      AudioDeviceInfo fallback=null;
       for(AudioDeviceInfo d:audio.getAvailableCommunicationDevices()){
-        if(d.getType()==type){
+        if(d.getType()==preferred){
           if(!audio.setCommunicationDevice(d))throw new IllegalStateException("audio route unavailable");
-          return;
+          return !speaker;
         }
+        if(!speaker&&d.getType()==AudioDeviceInfo.TYPE_BUILTIN_SPEAKER)fallback=d;
       }
+      if(fallback!=null&&audio.setCommunicationDevice(fallback))return false;
       throw new IllegalStateException("requested audio route unavailable");
     }
     audio.setSpeakerphoneOn(speaker);
+    return !speaker;
   }
 
   private void updateProximity(boolean enable){
