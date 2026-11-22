@@ -49,7 +49,7 @@ async function poll(){if(busy||ended)return;busy=true;try{const [{data:group,err
 if(group.status==='ended'){await finish(false);status('انتهت المكالمة');return}const mine=members.find(m=>m.user_id===me);if(!mine||mine.status!=='joined'){await finish(false);status('غادرت المكالمة');return}
 const joined=new Set(members.filter(m=>m.status==='joined').map(m=>m.user_id));for(const id of [...peers.keys()])if(!joined.has(id))removePeer(id);
 for(const m of members){if(m.user_id!==me&&m.status==='joined'&&!peers.has(m.user_id))await connect(m.user_id)}
-for(const s of signals){try{await handleSignal(s)}catch(e){status('خطأ في ربط مشارك: '+e.message)}cursor=s.id}
+for(const s of signals){try{await handleSignal(s)}catch(e){status('خطأ في ربط مشارك: '+e.message);break}cursor=s.id}
 status('متصلون: '+joined.size+' / 8'+(members.some(m=>m.status==='invited')?' • بانتظار قبول الدعوات':''));
 }catch(e){status('تعذّر تحديث المكالمة: '+e.message)}finally{busy=false}}
 async function finish(update=true){if(ended)return;ended=true;clearInterval(timer);for(const id of [...peers.keys()])removePeer(id);screenTrack?.stop();$('share').disabled=true;stream?.getTracks().forEach(t=>t.stop());if(update&&call){await db.rpc('chat_respond_group_call',{p_call_id:callId,p_action:call.host_id===me?'end':'leave'}).catch(()=>{})}$('end').disabled=true}
