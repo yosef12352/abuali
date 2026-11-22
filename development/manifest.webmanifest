@@ -5,8 +5,8 @@
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#050505",
-  "theme_color": "#1a0b2e",
+  "background_color": "#e8f5f0",
+  "theme_color": "#116b5a",
   "dir": "rtl",
   "lang": "ar",
   "icons": [
@@ -15,6 +15,45 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
+    }
+  ],
+  "id": "./",
+  "shortcuts": [
+    {
+      "name": "المحادثات",
+      "short_name": "الدردشات",
+      "url": "./index.html",
+      "icons": [
+        {
+          "src": "./icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "الأصدقاء",
+      "short_name": "الأصدقاء",
+      "url": "./friends.html",
+      "icons": [
+        {
+          "src": "./icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "الملف الشخصي",
+      "short_name": "حسابي",
+      "url": "./profile.html",
+      "icons": [
+        {
+          "src": "./icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     }
   ]
 }
