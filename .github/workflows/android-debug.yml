@@ -41,6 +41,29 @@ jobs:
           for permission in INTERNET CAMERA RECORD_AUDIO MODIFY_AUDIO_SETTINGS WAKE_LOCK POST_NOTIFICATIONS; do
             grep -q "android.permission.${permission}" android-native/android/app/src/main/AndroidManifest.xml
           done
+      - name: Verify original app icon and adaptive launcher resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          res=android-native/android/app/src/main/res
+          test -s "$res/drawable-nodpi/abuali_original_logo.jpg"
+          file "$res/drawable-nodpi/abuali_original_logo.jpg" | grep -q 'JPEG image data'
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          base = Path('android-native/android/app/src/main')
+          manifest = ET.parse(base / 'AndroidManifest.xml').getroot()
+          android = '{http://schemas.android.com/apk/res/android}'
+          app = manifest.find('application')
+          assert app is not None
+          assert app.get(android + 'icon') == '@mipmap/ic_launcher'
+          assert app.get(android + 'roundIcon') == '@mipmap/ic_launcher_round'
+          for name in ('ic_launcher', 'ic_launcher_round'):
+              root = ET.parse(base / 'res/mipmap-anydpi-v26' / (name + '.xml')).getroot()
+              assert root.tag == 'adaptive-icon'
+              assert root.find('foreground').get(android + 'drawable') == '@drawable/abuali_original_logo'
+          print('Original Android launcher icons and manifest verified')
+          PY
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon
         working-directory: android-native/android
