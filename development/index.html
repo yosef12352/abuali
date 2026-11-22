@@ -184,7 +184,7 @@ async function respondCall(id,action){
  await loadCallHistory();
 }
 async function loadCallHistory(){
- await supabase.rpc('expire_my_chat_calls').catch(()=>{});
+ try{await supabase.rpc('expire_my_chat_calls')}catch(error){console.warn('Call expiry check',error)}
  const container=document.getElementById('callHistoryList');
  container.textContent='جارٍ تحميل سجل المكالمات...';
  const {data,error}=await supabase.from('chat_calls').select('id,caller_id,callee_id,call_type,status,created_at').order('created_at',{ascending:false}).limit(50);
