@@ -18,7 +18,7 @@ mkdirSync(drawableDir,{recursive:true});
 writeFileSync(join(drawableDir,'abuali_original_logo.jpg'),Buffer.from(logoMatch[1],'base64'));
 // Adaptive launcher icons for Android 8+, with the original artwork preserved.
 const adaptiveDir=join(dir,'android/app/src/main/res/mipmap-anydpi-v26');mkdirSync(adaptiveDir,{recursive:true});
-const iconXml='<?xml version="1.0" encoding="utf-8"?>\\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\\n<background android:drawable="@android:color/black"/>\\n<foreground android:drawable="@drawable/abuali_original_logo"/>\\n</adaptive-icon>\\n';
+const iconXml='<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n<background android:drawable="@android:color/black"/>\n<foreground android:drawable="@drawable/abuali_original_logo"/>\n</adaptive-icon>\\n';
 writeFileSync(join(adaptiveDir,'ic_launcher.xml'),iconXml);
 writeFileSync(join(adaptiveDir,'ic_launcher_round.xml'),iconXml);
 const manifestPath=join(dir,'android/app/src/main/AndroidManifest.xml');let xml=readFileSync(manifestPath,'utf8');
@@ -26,7 +26,7 @@ for(const p of ['android.permission.INTERNET','android.permission.CAMERA','andro
     <application`);
 xml=xml.replace(/(<application\b)([^>]*?)(>)/,(_match,open,attrs,close)=>{
   const cleaned=attrs.replace(/\sandroid:icon=\"[^\"]*\"/g,'').replace(/\sandroid:roundIcon=\"[^\"]*\"/g,'');
-  return open+cleaned+' android:icon=\"@drawable/abuali_original_logo\"'+close;
+  return open+cleaned+' android:icon=\"@mipmap/ic_launcher\" android:roundIcon=\"@mipmap/ic_launcher_round\"'+close;
 });
 writeFileSync(manifestPath,xml);
 // The app is generated locally; debug APKs are for internal testing, not release signing.
