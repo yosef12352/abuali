@@ -84,14 +84,20 @@ function updateCallPeerChoices(){
  for(const chat of chatDirectory||[]){if(!chat.peer_id||!chat.conversation_id)continue;const option=document.createElement('option');option.value=chat.conversation_id;option.textContent=chat.peer_name||'مستخدم';select.append(option)}
  if([...select.options].some(o=>o.value===previous))select.value=previous;
 }
+let requestingCall=false;
 async function requestCall(type){
+ if(requestingCall)return;
  const id=document.getElementById('callPeerSelect').value,status=document.getElementById('callRequestStatus');
  const peer=(chatDirectory||[]).find(c=>c.conversation_id===id);
  if(!peer?.peer_id){status.textContent='اختار محادثة أولاً';return}
- status.textContent='جارٍ إرسال طلب الاتصال...';
- const {error}=await supabase.rpc('create_chat_call',{p_conversation_id:id,p_callee_id:peer.peer_id,p_call_type:type});
- status.textContent=error?'تعذّر إنشاء الطلب: '+error.message:'تم تسجيل طلب الاتصال. المكالمة الصوتية/المرئية نفسها لسه غير مفعّلة.';
- if(!error)await loadCallHistory();
+ requestingCall=true;
+ document.getElementById('requestAudioCall').disabled=true;document.getElementById('requestVideoCall').disabled=true;
+ try{
+  status.textContent='جارٍ إرسال طلب الاتصال...';
+  const {error}=await supabase.rpc('create_chat_call',{p_conversation_id:id,p_callee_id:peer.peer_id,p_call_type:type});
+  status.textContent=error?'تعذّر إنشاء الطلب: '+error.message:'تم إرسال طلب الاتصال. رح تبدأ محاولة الاتصال المباشر بعد قبول الطرف الثاني.';
+  if(!error)await loadCallHistory();
+ }finally{requestingCall=false;document.getElementById('requestAudioCall').disabled=false;document.getElementById('requestVideoCall').disabled=false}
 }
 document.getElementById('requestAudioCall').addEventListener('click',()=>requestCall('audio'));
 document.getElementById('requestVideoCall').addEventListener('click',()=>requestCall('video'));
@@ -178,6 +184,7 @@ async function respondCall(id,action){
  await loadCallHistory();
 }
 async function loadCallHistory(){
+ await supabase.rpc('expire_my_chat_calls').catch(()=>{});
  const container=document.getElementById('callHistoryList');
  container.textContent='جارٍ تحميل سجل المكالمات...';
  const {data,error}=await supabase.from('chat_calls').select('id,caller_id,callee_id,call_type,status,created_at').order('created_at',{ascending:false}).limit(50);
@@ -242,6 +249,7 @@ async function checkIncomingCalls(){
  if(incomingPollBusy||document.visibilityState!=='visible'||!navigator.onLine)return;
  incomingPollBusy=true;
  try{
+  await supabase.rpc('expire_my_chat_calls');
   const {data,error}=await supabase.from('chat_calls').select('id,conversation_id,caller_id,call_type,created_at').eq('callee_id',currentUser.id).eq('status','ringing').order('created_at',{ascending:false}).limit(10);
   if(error)throw error;
   const recent=(data||[]).filter(call=>Date.now()-new Date(call.created_at).getTime()<120000);
