@@ -49,7 +49,7 @@ if(existsSync(firebasePath)){
  const projectGradle=join(dir,'android/build.gradle');
  let projectSource=readFileSync(projectGradle,'utf8');
  if(!projectSource.includes('com.google.gms:google-services:')){
-  projectSource=projectSource.replace(/(classpath\s+['"]com\.android\.tools\.build:gradle:[^'"]+['"])/,"$1\\n        classpath 'com.google.gms:google-services:4.4.2'");
+  projectSource=projectSource.replace(/(classpath\s+['"]com\.android\.tools\.build:gradle:[^'"]+['"])/,"$1\n        classpath 'com.google.gms:google-services:4.4.2'");
   if(!projectSource.includes('com.google.gms:google-services:'))throw new Error('Unable to configure Firebase Gradle plugin');
   writeFileSync(projectGradle,projectSource);
  }
