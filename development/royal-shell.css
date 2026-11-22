@@ -1,0 +1,31 @@
+/* Abu Ali Chat — Royal Shell V1
+   Consistent premium dark design, no external font/graphics dependency. */
+:root{--shell-bg:#0b1824;--shell-panel:#102734;--shell-elev:#173743;--shell-stroke:rgba(142,224,212,.17);--shell-text:#edf9f7;--shell-muted:#a9c8c8;--shell-mint:#5be3c5;--shell-gold:#e8c78d;--shell-radius:22px}
+body:has(#chats){background:radial-gradient(circle at 8% 10%,#144c55 0,transparent 30%),radial-gradient(circle at 94% 92%,#123d46 0,transparent 35%),#08141e;color:var(--shell-text)}
+body:has(#chats) main{width:min(100%,740px);max-width:740px;min-height:100dvh;margin:0 auto;background:linear-gradient(155deg,rgba(18,42,54,.98),rgba(9,26,37,.99));border:1px solid var(--shell-stroke);box-shadow:0 26px 90px #0008;overflow:clip}
+body:has(#chats) header{background:linear-gradient(115deg,#123f49,#12313f 65%,#1a3d47);padding:12px clamp(14px,4vw,24px);border-bottom:1px solid var(--shell-stroke)}
+body:has(#chats) .topline{min-height:46px;gap:12px;letter-spacing:.15px}
+body:has(#chats) .topline>span{font-size:clamp(19px,4.5vw,24px);font-weight:800;color:#f4fffc}
+body:has(#chats) .brand-mark{width:44px;height:44px;object-fit:cover;border-radius:50%;border:1px solid #b2e8dc55;box-shadow:0 5px 19px #0006,0 0 0 3px #5be3c510}
+body:has(#chats) .quick-shortcuts{display:flex;align-items:center;justify-content:space-around;gap:8px;padding:10px clamp(10px,3vw,18px);background:#0d2732;border-bottom:1px solid var(--shell-stroke)}
+body:has(#chats) .quick-shortcuts button{min-width:42px;min-height:42px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #79dcca24;background:linear-gradient(150deg,#1b4350,#12303d);border-radius:15px;box-shadow:inset 0 1px #ffffff13,0 5px 14px #0003}
+body:has(#chats) nav{display:flex;gap:4px;justify-content:space-around;padding:6px 8px;background:#102c38;border-bottom:1px solid var(--shell-stroke)}
+body:has(#chats) nav button{flex:1;min-width:0;min-height:54px;padding:7px 3px;border-radius:14px;color:var(--shell-muted);border:1px solid transparent;font-size:clamp(10px,2.7vw,13px);line-height:1.3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+body:has(#chats) nav button.active{background:linear-gradient(145deg,#1e4c50,#173c49);color:#86f6db;border-color:#71e3c02e;box-shadow:inset 0 1px #ffffff18,0 5px 12px #0003}
+body:has(#chats) nav button .nav-symbol{display:inline-flex;align-items:center;justify-content:center}
+body:has(#chats) .chats-hero{padding:clamp(13px,3vw,20px);border-bottom:1px solid var(--shell-stroke);background:linear-gradient(120deg,#133643,#122b37)}
+body:has(#chats) .chats-hero h2{font-size:clamp(20px,5vw,27px);margin:4px 0;color:var(--shell-text)}
+body:has(#chats) .chats-eyebrow{color:var(--shell-gold);letter-spacing:1.5px;font-size:10px}
+body:has(#chats) .messages{background-color:#0e2731;background-image:radial-gradient(#74a89c17 1px,transparent 1px);background-size:24px 24px;min-height:0;scrollbar-color:#477a79 transparent}
+body:has(#chats) .msg{border-radius:17px 17px 5px 17px;background:linear-gradient(145deg,#1d5150,#184440);color:#f1fffb;border:1px solid #7fdec129;box-shadow:0 6px 18px #0002;line-height:1.5}
+body:has(#chats) .chat-composer{display:flex;align-items:center;gap:8px;padding:10px clamp(9px,2.8vw,18px) max(10px,env(safe-area-inset-bottom));background:#102d39;border-top:1px solid var(--shell-stroke)}
+body:has(#chats) .chat-composer #message{flex:1;min-width:0;min-height:46px;border-radius:18px;background:#091f2a;border:1px solid #629c9b50;color:#fff;font-size:16px;padding:11px 14px;box-shadow:inset 0 2px 8px #0002}
+body:has(#chats) .chat-composer #message:focus-visible{outline:2px solid #6ee7cb;outline-offset:1px}
+body:has(#chats) .chat-composer .send-button{min-width:46px;min-height:46px;border-radius:16px;background:linear-gradient(135deg,#26a991,#147d76);color:#fff;box-shadow:0 6px 17px #0003}
+body:has(#chats) .chat-composer .attach-button{min-width:43px;min-height:43px;border-radius:15px}
+body:has(#chats) button:disabled{opacity:.52;cursor:not-allowed;filter:grayscale(.3)}
+body:has(#chats) .view{min-width:0}
+body:has(#chats) .view:not(#chats){color:var(--shell-text)}
+body:has(#chats) .view:not(#chats) input,body:has(#chats) .view:not(#chats) select,body:has(#chats) .view:not(#chats) textarea{color:#f4fffc;background:#102b38;border-color:#4a7d7e}
+@media(max-width:650px){body:has(#chats) main{border:0;border-radius:0;box-shadow:none}body:has(#chats) header{padding-top:max(10px,env(safe-area-inset-top))}body:has(#chats) .quick-shortcuts{gap:5px}body:has(#chats) .quick-shortcuts button{min-width:40px;padding:7px}}
+@media(prefers-reduced-motion:reduce){body:has(#chats) *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
