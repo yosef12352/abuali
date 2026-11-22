@@ -502,6 +502,12 @@ function base64ToUint8Array(value){const base64=value.replace(/-/g,'+').replace(
 async function getPushRegistration(){if(!('serviceWorker' in navigator)||!('PushManager' in window)||!window.isSecureContext)throw Error('متصفحك ما بيدعم Push');return navigator.serviceWorker.ready}
 async function refreshPushStatus(){
  try{
+  if(window.Capacitor?.isNativePlatform?.()&&window.Capacitor?.getPlatform?.()==='android'){
+   const plugin=window.Capacitor?.Plugins?.PushNotifications;
+   pushEnable.disabled=!plugin;pushDisable.disabled=!plugin;
+   pushStatus.textContent=plugin?'إشعارات أندرويد: اضغط تفعيل لتسجيل الجهاز مع Firebase. يلزم إعداد خادم الإرسال.':'إضافة FCM غير موجودة في هذه النسخة من APK.';
+   return;
+  }
   const registration=await getPushRegistration(),subscription=await registration.pushManager.getSubscription();
   const {data,error}=await supabase.functions.invoke('chat-push-config',{method:'GET'});
   if(error)throw error;
