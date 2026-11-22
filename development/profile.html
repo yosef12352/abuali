@@ -15,9 +15,9 @@ async function init(){
  if(!id)id=user.id;
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)){say('رابط الملف الشخصي غير صحيح');return}
  const{data,error}=await db.rpc('chat_view_profile',{p_user:id});
- if(error||!data?.length){$('name').textContent='الملف غير متاح';say(error?'تعذّر تحميل الملف: '+error.message:'قد يكون الحساب خاصاً أو محظوراً');return}
+ if(error||!data?.length){$('name').textContent='الملف غير متاح';say(error?'تعذّر تحميل الملف: '+error.message:'قد يكون الحساب خاصاً أو محظوراً');if(error)$('actions').append(btn('↻ إعادة المحاولة',()=>location.reload(),true));return}
  const p=data[0];$('name').textContent=p.display_name||'مستخدم';$('bio').textContent=p.bio||'مرحباً بكم في ملفي الشخصي';await showImage(p.avatar_path,$('avatar'));await showImage(p.cover_path,$('cover'));
- if(id===user.id){$('actions').append(btn('✎ تعديل اسمي وإعداداتي',()=>location.href='./index.html#settings'),btn('📷 تغيير صورة الملف',()=>location.href='./index.html#settings',true));$('coverEditor').hidden=false;initCoverUpload(user.id);return}
+ if(id===user.id){$('presence').textContent='هذا ملفك الشخصي';$('actions').append(btn('✎ تعديل اسمي وإعداداتي',()=>location.assign('./index.html#settings')),btn('📷 تغيير صورة الملف',()=>location.assign('./index.html#settings'),true),btn('↻ تحديث الملف',()=>location.reload(),true));$('coverEditor').hidden=false;initCoverUpload(user.id);return}
  const{data:presence}=await db.rpc('chat_get_presence',{p_users:[id]});
  if(presence?.length){const online=presence[0].is_online;$('avatar').classList.add(online?'online':'offline');$('presence').className='presence '+(online?'online':'offline');$('presence').textContent=online?'● متصل الآن':'● غير متصل'}
  if(p.is_friend){$('actions').append(btn('مراسلة',()=>openChat('chat')),btn('اتصال صوتي',()=>openChat('audio'),true),btn('اتصال فيديو',()=>openChat('video'),true))}
@@ -78,5 +78,5 @@ function initCoverUpload(uid){
   }catch(e){say('تعذّر حفظ الغلاف: '+(e.message||'خطأ'));save.disabled=false}
  });
 }
-init().catch(e=>{document.getElementById('name').textContent='تعذّر تحميل الملف';say('خطأ في تحميل الملف: '+(e.message||'خطأ غير معروف'))});
+init().catch(e=>{document.getElementById('name').textContent='تعذّر تحميل الملف';say('خطأ في تحميل الملف: '+(e.message||'خطأ غير معروف'));$('actions').replaceChildren(btn('↻ إعادة المحاولة',()=>location.reload(),true))});
 </script></body></html>
