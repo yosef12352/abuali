@@ -46,7 +46,12 @@ function relationFor(id){return relations.find(r=>r.requester_id===id||r.address
 function makeButton(label,action,secondary=false){const b=el('button',secondary?'secondary':'',label);b.type='button';b.addEventListener('click',action);return b}
 function card(p,r){
  const c=el('article','card'),av=el('div','avatar','👤'),info=el('div','person'),actions=el('div','actions');
- if(p.avatar_path){const img=el('img');img.alt='';const {data}=db.storage.from('avatars').getPublicUrl(p.avatar_path);if(data?.publicUrl){img.src=data.publicUrl;img.onerror=()=>img.remove();av.textContent='';av.append(img)}}
+ if(p.avatar_path){
+  const img=el('img');img.alt='';
+  db.storage.from('profile-avatars').createSignedUrl(p.avatar_path,300).then(({data,error})=>{
+   if(!error&&data?.signedUrl){img.src=data.signedUrl;av.textContent='';av.append(img);img.onerror=()=>{av.textContent='👤'}}
+  });
+ }
  info.append(el('strong','',p.display_name||'مستخدم'),el('small','',r?.status==='accepted'?'من أصدقائك':r?.status==='pending'?(r.requester_id===me?'بانتظار القبول':'أرسل لك طلب صداقة'):''));
  const action=async(fn,args)=>{
  for(const b of actions.querySelectorAll('button'))b.disabled=true;
