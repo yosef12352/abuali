@@ -143,13 +143,30 @@ function setupForegroundNotifications(){
  });
 }
 setupForegroundNotifications();
+if('serviceWorker' in navigator){
+ navigator.serviceWorker.addEventListener('message',event=>{
+  if(event.origin!==location.origin||event.data?.type!=='OPEN_CHAT_FROM_NOTIFICATION')return;
+  const id=event.data.conversationId;
+  if(typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(id)&&chatDirectory.some(c=>c.conversation_id===id))openConversation(id);
+ });
+}
+
 function notifyNewUnreadChats(next){
  const nextMap=new Map(next.map(c=>[c.conversation_id,Math.max(0,Number(c.unread_count)||0)]));
  if(notificationsBaselineReady&&document.visibilityState==='hidden'&&'Notification' in window&&Notification.permission==='granted'){
   const changed=next.filter(c=>nextMap.get(c.conversation_id)>(previousUnreadByChat.get(c.conversation_id)||0)&&!(c.muted_until&&new Date(c.muted_until)>new Date()));
   if(changed.length&&Date.now()-lastForegroundNoticeAt>4000){
    const c=changed[0];lastForegroundNoticeAt=Date.now();
-   try{const n=new Notification('رسالة جديدة — أبو علي شات',{body:changed.length>1?'وصلتك رسائل جديدة في '+changed.length+' محادثات':'رسالة جديدة من '+(c.peer_name||'مستخدم'),icon:'./icon.svg',tag:'chat-message-'+c.conversation_id});n.onclick=()=>{window.focus();n.close();if(c.conversation_id)openConversation(c.conversation_id)}}catch{}
+   const options={body:changed.length>1?'وصلتك رسائل جديدة في '+changed.length+' محادثات':'رسالة جديدة من '+(c.peer_name||'مستخدم'),icon:'./icon.svg',tag:'chat-message-'+c.conversation_id,data:{conversationId:c.conversation_id}};
+   (async()=>{try{
+    if('serviceWorker' in navigator){
+     const registration=await navigator.serviceWorker.ready;
+     await registration.showNotification('رسالة جديدة — أبو علي شات',options);
+    }else{
+     const n=new Notification('رسالة جديدة — أبو علي شات',options);
+     n.onclick=()=>{window.focus();n.close();if(c.conversation_id)openConversation(c.conversation_id)};
+    }
+   }catch(error){console.warn('تعذّر عرض تنبيه الرسائل',error)}})();
   }
  }
  previousUnreadByChat=nextMap;notificationsBaselineReady=true;
