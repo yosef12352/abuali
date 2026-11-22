@@ -18,8 +18,27 @@ a{color:#e9c66b!important}#status{background:#140d1c!important;border-color:#d4a
 .royal-login-brand .crown{display:block;font-size:34px;line-height:1.2;margin-bottom:6px}
 @media(max-width:390px){main{padding:16px!important}.mascot-stage{height:175px!important}}
 @media(prefers-reduced-motion:reduce){.bear-figure,.bear-motion{animation:none!important}}
+/* Bear-first mobile polish and accessible login interactions */
+:root{color-scheme:dark}main{position:relative;isolation:isolate}main:before{content:"";position:absolute;inset:0 0 auto;height:160px;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 50% 0%,#d4af3718,transparent 72%);border-radius:inherit}
+.royal-login-brand .crown{filter:drop-shadow(0 0 12px #d4af3760)}
+.mascot-stage{cursor:pointer;touch-action:manipulation;user-select:none;-webkit-tap-highlight-color:transparent}
+.mascot-stage:focus-visible{outline:2px solid #d4af37;outline-offset:5px;border-radius:18px}
+.bear-figure{width:min(225px,72vw);height:188px;transition:filter .22s ease}
+.mascot-stage:hover .bear-figure{filter:drop-shadow(0 0 18px #d4af3759)}
+.mascot-caption{text-align:center;min-height:28px;font-size:13px;font-weight:700;color:#e9cb81}
+#auth .tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0 10px}
+#auth .tabs button{margin:0!important;padding:12px 6px!important;font-size:13px}
+#authForm>button[type=submit]{display:block;width:100%;margin:20px 0 0!important;min-height:50px;font-weight:900!important}
+.password-row{display:flex;align-items:center;gap:8px}
+.password-row input{min-width:0;flex:1}
+.password-row button{flex:0 0 auto;margin:0!important;padding:12px!important;font-size:12px!important}
+#username,#password{font-family:Cairo,Tahoma,Arial,sans-serif!important}
+#username::placeholder,#password::placeholder{color:#93859c}
+#status{line-height:1.7;font-size:12px;overflow-wrap:anywhere}
+#authForm input:focus-visible,#authForm button:focus-visible{outline:2px solid #d4af37;outline-offset:2px}
+@media(max-width:390px){body{padding-inline:9px!important}main{margin:0 auto!important}.bear-figure{height:166px}.mascot-stage{height:167px!important}h1{font-size:23px!important}}
 </style></head>
-<body><main><a href="./index.html">العودة إلى الدردشات</a><div class="royal-login-brand"><span class="crown" aria-hidden="true">♛</span>BETA ROYAL PRO</div><div class="mascot-stage"><svg id="bear" class="bear-figure" role="img" aria-label="دب تفاعلي" data-mood="idle" viewBox="0 0 260 340" xmlns="http://www.w3.org/2000/svg">
+<body><main><a href="./index.html">العودة إلى الدردشات</a><div class="royal-login-brand"><span class="crown" aria-hidden="true">♛</span>BETA ROYAL PRO</div><div class="mascot-stage" id="bearStage" role="button" tabindex="0" aria-label="تفاعل مع الدب"><svg id="bear" class="bear-figure" role="img" aria-label="دب تفاعلي" data-mood="idle" viewBox="0 0 260 340" xmlns="http://www.w3.org/2000/svg">
 <defs><linearGradient id="bodyFur" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#b8fff1"/><stop offset=".55" stop-color="#4bc6b5"/><stop offset="1" stop-color="#1e8b92"/></linearGradient><radialGradient id="faceFur"><stop stop-color="#a4f3de"/><stop offset="1" stop-color="#38a9a5"/></radialGradient></defs>
 <ellipse cx="130" cy="326" rx="87" ry="11" fill="#020c13" opacity=".32"/>
 <g class="bear-motion">
@@ -61,4 +80,19 @@ $('authForm').addEventListener('submit',async e=>{e.preventDefault();if(busy)ret
 $('profileForm').addEventListener('submit',async e=>{e.preventDefault();if(busy)return;const name=$('displayName').value.trim();if(name.length<2){status('الاسم المستعار لازم يكون حرفين على الأقل');return}setBusy(true);const {error}=await client.rpc('save_my_profile',{p_display_name:name});setBusy(false);status(error?'تعذّر حفظ الاسم: '+error.message:'تم حفظ الاسم المستعار بنجاح، عم نفتح التطبيق...');reactTo(error?'error':'happy',error?'في مشكلة بالحفظ':'حلو الاسم الجديد!');if(!error)window.location.replace('./index.html')});
 $('logout').addEventListener('click',async()=>{if(busy)return;setBusy(true);const {error}=await client.auth.signOut();setBusy(false);if(error)status('تعذّر تسجيل الخروج: '+error.message);else{switchTab(false);await refresh()}});
 await refresh();
+</script><script>
+(function(){
+const stage=document.getElementById('bearStage'),bear=document.getElementById('bear'),caption=document.getElementById('mascotCaption'),user=document.getElementById('username'),pass=document.getElementById('password'),toggle=document.getElementById('togglePassword');
+if(!stage||!bear||!caption)return;
+const moods=[['happy','أهلاً وسهلاً! 🐻'],['typing','عم انتبه معك!'],['idle','أنا هون معك دائماً']];
+let taps=0;
+function mood(m,t){bear.dataset.mood=m;bear.setAttribute('aria-label',t);caption.textContent=t}
+function greet(){const item=moods[taps++%moods.length];mood(item[0],item[1])}
+stage.addEventListener('click',greet);
+stage.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();greet()}});
+user?.addEventListener('focus',()=>mood('happy','شو اسمك الحلو؟'));
+pass?.addEventListener('focus',()=>mood('typing','كلمة السر إلك وحدك، أنا ما بتطلع عليها'));
+pass?.addEventListener('blur',()=>{if(pass.type==='password')mood('idle','أهلاً فيك بأبو علي شات')});
+toggle?.addEventListener('click',()=>{toggle.setAttribute('aria-label',pass.type==='password'?'إظهار كلمة السر':'إخفاء كلمة السر')});
+})();
 </script></body></html>
