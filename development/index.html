@@ -102,7 +102,8 @@ async function requestCall(type){
 document.getElementById('requestAudioCall').addEventListener('click',()=>requestCall('audio'));
 document.getElementById('requestVideoCall').addEventListener('click',()=>requestCall('video'));
 
-let activeWebCall=null,callSignalTimer=null,callStatusTimer=null,startingWebCall=false,callRetryTimer=null;
+let activeWebCall=null,callSignalTimer=null,callStatusTimer=null,startingWebCall=false,callRetryTimer=null,callDurationTimer=null;
+const failedCallStarts=new Set();
 const callPanel=document.getElementById('liveCallPanel'),callState=document.getElementById('liveCallStatus');
 async function sendWebSignal(call,type,payload){
  const {error}=await supabase.rpc('send_chat_call_signal',{p_call_id:call.id,p_signal_type:type,p_payload:payload});
@@ -112,6 +113,7 @@ function closeWebCall(){
  if(callSignalTimer){clearInterval(callSignalTimer);callSignalTimer=null}
  if(callStatusTimer){clearInterval(callStatusTimer);callStatusTimer=null}
  if(callRetryTimer){clearTimeout(callRetryTimer);callRetryTimer=null}
+ if(callDurationTimer){clearInterval(callDurationTimer);callDurationTimer=null}
  const call=activeWebCall;activeWebCall=null;
  if(call){call.pc.close();call.stream.getTracks().forEach(track=>track.stop())}
  for(const id of ['liveLocalVideo','liveRemoteVideo','liveRemoteAudio']){const el=document.getElementById(id);el.pause();el.srcObject=null;el.hidden=id!=='liveRemoteAudio'}
@@ -147,34 +149,34 @@ async function readWebSignals(){
  finally{call.reading=false}
 }
 async function beginWebCall(record){
- if(activeWebCall||startingWebCall)return;
+ if(activeWebCall||startingWebCall||failedCallStarts.has(record.id))return;
  if(!window.RTCPeerConnection||!navigator.mediaDevices?.getUserMedia){document.getElementById('callRequestStatus').textContent='هالمتصفح ما بيدعم المكالمات الآمنة';return}
  startingWebCall=true;
  let stream=null,pc=null;
  try{
   stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:record.call_type==='video'?{facingMode:'user'}:false});
   pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
-  const call={id:record.id,stream,pc,cursor:0,reading:false,pendingIce:[],offerHandled:false,remoteStream:new MediaStream(),remoteTracks:new Set()};
+  const call={id:record.id,stream,pc,cursor:0,reading:false,pendingIce:[],offerHandled:false,remoteStream:new MediaStream(),remoteTracks:new Set(),connectedAt:null};
   activeWebCall=call;callPanel.hidden=false;
   document.getElementById('liveCallHeading').textContent=record.call_type==='video'?'📹 مكالمة فيديو':'📞 مكالمة صوتية';
   callState.textContent='جارٍ ربط الاتصال...';
   for(const track of stream.getTracks())pc.addTrack(track,stream);
   if(record.call_type==='video'){const video=document.getElementById('liveLocalVideo');video.hidden=false;video.srcObject=stream}
   pc.ontrack=event=>{if(activeWebCall!==call)return;if(!call.remoteTracks.has(event.track.id)){call.remoteTracks.add(event.track.id);call.remoteStream.addTrack(event.track)}const element=document.getElementById(record.call_type==='video'?'liveRemoteVideo':'liveRemoteAudio');element.srcObject=call.remoteStream;element.hidden=false;element.play().catch(()=>{callState.textContent='اضغط على الشاشة لتفعيل صوت الطرف الآخر'})};
-  pc.onconnectionstatechange=()=>{if(activeWebCall!==call)return;callState.textContent=({connected:'المكالمة متصلة',connecting:'جارٍ الاتصال...',disconnected:'الاتصال انقطع مؤقتاً',failed:'فشل الاتصال المباشر، قد تحتاج الشبكة إلى خادم TURN'})[pc.connectionState]||'حالة الاتصال: '+pc.connectionState};
+  pc.onconnectionstatechange=()=>{if(activeWebCall!==call)return;if(pc.connectionState==='connected'&&!call.connectedAt){call.connectedAt=Date.now();callDurationTimer=setInterval(()=>{if(activeWebCall!==call)return;const seconds=Math.floor((Date.now()-call.connectedAt)/1000);callState.textContent='المكالمة متصلة • '+String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')},1000)}callState.textContent=({connected:'المكالمة متصلة',connecting:'جارٍ الاتصال...',disconnected:'الاتصال انقطع مؤقتاً',failed:'فشل الاتصال المباشر، قد تحتاج الشبكة إلى خادم TURN'})[pc.connectionState]||'حالة الاتصال: '+pc.connectionState};
   pc.onicecandidate=event=>{if(event.candidate&&activeWebCall===call)sendWebSignal(call,'ice',event.candidate.toJSON()).catch(()=>{callState.textContent='تعذّر إرسال بيانات الاتصال'})};
   callSignalTimer=setInterval(readWebSignals,1100);
   pc.oniceconnectionstatechange=()=>{if(activeWebCall!==call)return;if(pc.iceConnectionState==='failed'){callState.textContent='عم نحاول نعيد الاتصال...';try{pc.restartIce()}catch{};if(callRetryTimer)clearTimeout(callRetryTimer);callRetryTimer=setTimeout(()=>{if(activeWebCall===call&&pc.connectionState==='failed')callState.textContent='فشل الاتصال. جرّب شبكة تانية أو خادم TURN.'},12000)}};
   callStatusTimer=setInterval(async()=>{if(activeWebCall!==call)return;const {data}=await supabase.from('chat_calls').select('status').eq('id',call.id).maybeSingle();if(data&&data.status!=='accepted'){closeWebCall();await loadCallHistory()}},3500);
   if(record.caller_id===currentUser.id){const offer=await pc.createOffer();await pc.setLocalDescription(offer);await sendWebSignal(call,'offer',{type:pc.localDescription.type,sdp:pc.localDescription.sdp})}
   await readWebSignals();
- }catch(error){if(activeWebCall)closeWebCall();else{pc?.close();stream?.getTracks().forEach(t=>t.stop())}document.getElementById('callRequestStatus').textContent='تعذّر تشغيل الاتصال: '+(error.message||'خطأ')}
+ }catch(error){failedCallStarts.add(record.id);if(activeWebCall?.id===record.id)closeWebCall();else{pc?.close();stream?.getTracks().forEach(t=>t.stop())}document.getElementById('callRequestStatus').textContent='تعذّر تشغيل الاتصال: '+(error.message||'خطأ');await supabase.rpc('respond_chat_call',{p_call_id:record.id,p_action:'end'}).catch(()=>{})}
  finally{startingWebCall=false}
 }
 document.getElementById('liveHangupCall').addEventListener('click',endWebCall);
 document.getElementById('liveMuteCall').addEventListener('click',()=>{if(!activeWebCall)return;const track=activeWebCall.stream.getAudioTracks()[0];if(track){track.enabled=!track.enabled;document.getElementById('liveMuteCall').textContent=track.enabled?'كتم الميكروفون':'تشغيل الميكروفون'}});
 document.getElementById('liveCameraToggle').addEventListener('click',()=>{if(!activeWebCall)return;const track=activeWebCall.stream.getVideoTracks()[0];if(track){track.enabled=!track.enabled;document.getElementById('liveCameraToggle').textContent=track.enabled?'إيقاف الكاميرا':'تشغيل الكاميرا'}});
-window.addEventListener('pagehide',()=>{if(activeWebCall)closeWebCall()});
+window.addEventListener('pagehide',()=>{if(activeWebCall){const id=activeWebCall.id;closeWebCall();supabase.rpc('respond_chat_call',{p_call_id:id,p_action:'end'}).catch(()=>{})}});
 async function respondCall(id,action){
  const {data:result,error}=await supabase.rpc('respond_chat_call',{p_call_id:id,p_action:action});
  if(error)document.getElementById('callRequestStatus').textContent='تعذّر تحديث الطلب: '+error.message;
@@ -211,7 +213,7 @@ async function checkAcceptedCalls(){
  try{
   const {data,error}=await supabase.from('chat_calls').select('id,caller_id,callee_id,call_type,status,created_at').eq('status','accepted').or('caller_id.eq.'+currentUser.id+',callee_id.eq.'+currentUser.id).order('created_at',{ascending:false}).limit(3);
   if(error)throw error;
-  const record=(data||[]).find(c=>Date.now()-new Date(c.created_at).getTime()<180000);
+  const record=(data||[]).find(c=>Date.now()-new Date(c.created_at).getTime()<180000&&!failedCallStarts.has(c.id));
   if(record)await beginWebCall(record);
  }catch(error){console.warn('Call status check',error)}
  finally{acceptedCallPollBusy=false}
